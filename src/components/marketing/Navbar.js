@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Menu, X, Telescope, ArrowRight } from "lucide-react";
+import { Menu, X, Telescope, ArrowRight, Mic } from "lucide-react";
 import { createClient } from "../../utils/supabase/client";
 
 export default function Navbar() {
@@ -14,19 +14,40 @@ export default function Navbar() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [allPosts, setAllPosts] = useState([]);
+  const [allContent, setAllContent] = useState([]); // Renamed from allPosts to reflect it has pages too
   const searchRef = useRef(null);
   const router = useRouter();
 
-  // FETCH DATA
+  // FETCH DATA (PAGES + BLOGS)
   useEffect(() => {
     const fetchSearchData = async () => {
+      // 1. Define Static Pages manually
+      const staticPages = [
+        { title: "Home", slug: "/", tag: "Main" },
+        { title: "(Voice) Actor", slug: "/actor", tag: "Portfolio" },
+        { title: "Endeavors", slug: "/endeavors", tag: "Projects" },
+        { title: "Collab", slug: "/collab", tag: "Contact" },
+        { title: "Schedule / Audiobook", slug: "/schedule", tag: "Booking" },
+      ];
+
       try {
         const supabase = createClient();
+        // 2. Fetch Blog Posts
         const { data } = await supabase
           .from("posts")
           .select("title, slug, tag");
-        if (data) setAllPosts(data);
+
+        // 3. Format Blogs to match Page structure (prepend /blog/ to slug)
+        const formattedBlogs = data
+          ? data.map((post) => ({
+              ...post,
+              slug: `/blog/${post.slug}`, // Standardize the link here
+              tag: post.tag || "Blog", // Ensure there is a tag
+            }))
+          : [];
+
+        // 4. Combine them
+        setAllContent([...staticPages, ...formattedBlogs]);
       } catch (error) {
         console.error("Supabase error:", error);
       }
@@ -43,17 +64,19 @@ export default function Navbar() {
 
   // SEARCH LOGIC
   useEffect(() => {
-    if (query.length > 0 && allPosts.length > 0) {
-      const filtered = allPosts.filter(
-        (post) =>
-          post.title.toLowerCase().includes(query.toLowerCase()) ||
-          post.tag?.toLowerCase().includes(query.toLowerCase())
+    if (query.length > 0 && allContent.length > 0) {
+      const lowerQuery = query.toLowerCase();
+
+      const filtered = allContent.filter(
+        (item) =>
+          item.title.toLowerCase().includes(lowerQuery) ||
+          item.tag?.toLowerCase().includes(lowerQuery)
       );
       setResults(filtered.slice(0, 5));
     } else {
       setResults([]);
     }
-  }, [query, allPosts]);
+  }, [query, allContent]);
 
   // CLICK OUTSIDE
   useEffect(() => {
@@ -70,7 +93,8 @@ export default function Navbar() {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (results.length > 0) {
-      router.push(`/blog/${results[0].slug}`);
+      // Since we standardized the 'slug' in the fetch, we can just push directly
+      router.push(results[0].slug);
       setQuery("");
       setResults([]);
       setIsSearchOpen(false);
@@ -83,6 +107,32 @@ export default function Navbar() {
     { name: "collab", href: "/collab" },
     { name: "blog", href: "/blog" },
   ];
+
+  // --- THE BEAUTIFUL BUTTON COMPONENT ---
+  const AudiobookButton = ({ mobile = false }) => (
+    <Link
+      href="/schedule"
+      onClick={() => setIsOpen(false)}
+      className={`
+        relative group overflow-hidden rounded-full 
+        transition-all duration-300 hover:scale-105 hover:shadow-[0_0_20px_rgba(20,184,166,0.5)]
+        ${
+          mobile
+            ? "w-full max-w-xs py-4 text-center mt-4"
+            : "px-5 py-2 hidden lg:block"
+        }
+      `}
+    >
+      {/* MOVING GRADIENT BACKGROUND */}
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-teal-400 via-indigo-500 to-blue-600 bg-[length:200%_auto] animate-gradient-xy" />
+
+      {/* CONTENT */}
+      <div className="relative flex items-center justify-center gap-2 text-white font-black uppercase tracking-widest text-[10px] md:text-xs">
+        <span>Make an Audiobook</span>
+        <Mic size={mobile ? 16 : 12} className="fill-white/20" />
+      </div>
+    </Link>
+  );
 
   return (
     <>
@@ -124,9 +174,9 @@ export default function Navbar() {
           </Link>
 
           {/* RIGHT: NAV ITEMS */}
-          <div className="flex items-center gap-3 md:gap-6">
+          <div className="flex items-center gap-3 md:gap-5">
             {/* DESKTOP LINKS */}
-            <nav className="hidden md:flex items-center gap-8">
+            <nav className="hidden md:flex items-center gap-6 xl:gap-8">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
@@ -170,7 +220,7 @@ export default function Navbar() {
                     if (!isSearchOpen) setIsSearchOpen(true);
                   }}
                   onFocus={() => setIsSearchOpen(true)}
-                  placeholder="SEARCH"
+                  placeholder="SEARCH SITE"
                   className={`bg-transparent text-xs font-bold uppercase tracking-wider outline-none placeholder:text-slate-400 transition-all duration-300 
                     ${
                       isSearchOpen
@@ -202,19 +252,26 @@ export default function Navbar() {
               {query && isSearchOpen && (
                 <div className="absolute top-full right-0 mt-3 w-72 rounded-xl border border-gray-100 bg-white/90 backdrop-blur-xl shadow-xl overflow-hidden flex flex-col">
                   {results.length > 0 ? (
-                    results.map((post) => (
+                    results.map((item) => (
                       <Link
-                        key={post.slug}
-                        href={`/blog/${post.slug}`}
+                        key={item.slug}
+                        // LINK FIX: Use the slug directly since we formatted it in the fetch
+                        href={item.slug}
                         onClick={() => {
                           setQuery("");
                           setIsSearchOpen(false);
                         }}
                         className="p-4 border-b border-gray-50 hover:bg-teal-50 flex justify-between items-center group"
                       >
-                        <span className="font-bold text-sm text-slate-700 group-hover:text-teal-700 line-clamp-1">
-                          {post.title}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-sm text-slate-700 group-hover:text-teal-700 line-clamp-1">
+                            {item.title}
+                          </span>
+                          {/* SHOW THE TAG FOR CONTEXT */}
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                            {item.tag}
+                          </span>
+                        </div>
                         <ArrowRight
                           size={14}
                           className="text-teal-400 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -229,6 +286,9 @@ export default function Navbar() {
                 </div>
               )}
             </div>
+
+            {/* --- DESKTOP AUDIOBOOK BUTTON --- */}
+            <AudiobookButton />
 
             {/* MOBILE MENU BUTTON */}
             <button
@@ -271,6 +331,9 @@ export default function Navbar() {
             {link.name}
           </Link>
         ))}
+
+        {/* --- MOBILE AUDIOBOOK BUTTON --- */}
+        <AudiobookButton mobile={true} />
       </div>
     </>
   );

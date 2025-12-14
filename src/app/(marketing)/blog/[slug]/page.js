@@ -202,9 +202,26 @@ export default async function BlogPost({ params }) {
 // --- HELPER FUNCTION ---
 function calculateReadingStats(htmlContent) {
   if (!htmlContent) return { wordCount: 0, readTime: 0 };
-  const text = htmlContent.replace(/<[^>]*>/g, " ");
+
+  // 1. Remove <script> and <style> tags AND their content completely
+  // The previous regex only removed the tags, leaving the CSS/JS code to be counted as "words"
+  const textWithoutScripts = htmlContent.replace(
+    /<(script|style)[^>]*>[\s\S]*?<\/\1>/gi,
+    ""
+  );
+
+  // 2. Remove all other HTML tags (like <p>, <div>, <strong>)
+  const text = textWithoutScripts.replace(/<[^>]*>/g, " ");
+
+  // 3. Split by whitespace and count non-empty words
   const wordCount = text.split(/\s+/).filter((word) => word.length > 0).length;
+
   const wordsPerMinute = 225;
   const readTime = Math.ceil(wordCount / wordsPerMinute);
-  return { wordCount, readTime };
+
+  return {
+    wordCount,
+    // Ensure it never says "0 min read"
+    readTime: readTime < 1 ? 1 : readTime,
+  };
 }

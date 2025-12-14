@@ -9,8 +9,10 @@
   --color-primary-dark: #115e59;
   --color-secondary: #d4a373;
 
+  /* --- ANIMATIONS --- */
   --animate-fade-in: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-slide-up: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-gradient-xy: gradient-xy 3s ease infinite;
 
   @keyframes fadeIn {
     from {
@@ -28,6 +30,15 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+  @keyframes gradient-xy {
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
     }
   }
 }

@@ -359,7 +359,7 @@ export default function SchedulerPage() {
           Production
         </h1>
 
-        <p className="text-slate-500 text-sm md:text-lg font-medium max-w-xl mx-auto leading-relaxed mt-6">
+        <p className="text-slate-500 text-md md:text-2xl font-medium max-w-xl mx-auto leading-relaxed mt-6">
           Enter your word count to calculate the timeline, then select a start
           date.
         </p>
