@@ -1,173 +1,148 @@
 "use client";
+
 import Link from "next/link";
 import Image from "next/image";
-import { Tag, Calendar, Feather, ArrowRight } from "lucide-react";
-
-// --- THE DATA SOURCE ---
-export const BLOG_POSTS = [
-  {
-    image: "/images/blog-darts.webp",
-    title: "Darts improve focus",
-    slug: "darts-improve-focus",
-    tag: "Acting",
-    date: "Dec. 2nd, 2024",
-  },
-];
+import { useState, useEffect } from "react";
+import { Tag, Calendar, Feather, ArrowRight, Clock } from "lucide-react";
+import { createClient } from "../../../utils/supabase/client";
 
 export default function BlogIndexPage() {
+  const [posts, setPosts] = useState([]);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (data) setPosts(data);
+    };
+    fetchPosts();
+  }, []);
+
   return (
-    <div className="relative min-h-screen w-full bg-gradient-to-br from-[#FDFBF7] via-[#E8F3F1] to-[#E0E7FF] pt-24 pb-24 px-4 selection:bg-teal-200 selection:text-teal-900 overflow-hidden">
-      {/* --- BACKGROUND BLOBS (Atmosphere) --- */}
+    <div className="relative min-h-screen w-full bg-slate-50 pt-24 pb-24 px-4 overflow-hidden">
+      {/* ATMOSPHERE: Clean, soft blobs */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-teal-300/30 blur-[120px] animate-blob mix-blend-multiply"></div>
-        <div className="absolute top-[10%] right-[-10%] w-[35%] h-[35%] rounded-full bg-indigo-300/30 blur-[120px] animate-blob animation-delay-2000 mix-blend-multiply"></div>
-        <div className="absolute bottom-[-10%] left-[20%] w-[45%] h-[45%] rounded-full bg-purple-300/30 blur-[120px] animate-blob animation-delay-4000 mix-blend-multiply"></div>
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-teal-100/40 blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-100/40 blur-[120px]" />
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto">
         {/* Header */}
-        <header className="text-center mb-20 max-w-2xl mx-auto animate-fade-in">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-sm mb-6 hover:scale-105 transition-transform cursor-default">
-            <Feather size={12} className="text-teal-500 animate-pulse" />
+        <header className="text-center mb-20 max-w-2xl mx-auto animate-fade-in relative">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm mb-6">
+            <Feather size={12} className="text-teal-600" />
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
               100% Human-written words
             </span>
           </div>
 
-          <h1 className="text-7xl text-transparent bg-clip-text bg-gradient-to-r from-teal-500 via-indigo-500 to-purple-500 animate-gradient-x pb-4 drop-shadow-sm">
-            Thoughts
+          <h1 className="text-7xl md:text-8xl font-black pb-6 tracking-tight leading-[0.9] text-transparent bg-clip-text bg-gradient-to-br from-slate-200 via-teal-600 to-slate-800 drop-shadow-md">
+            Blog
           </h1>
 
-          <p className="text-slate-600 text-xl font-medium max-w-xl mx-auto leading-relaxed">
+          <p className="text-slate-500 text-xl font-medium max-w-xl mx-auto leading-relaxed">
             Lessons from exploring the alternatives space.
           </p>
         </header>
 
         {/* Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-2 md:px-0">
-          {BLOG_POSTS.map((post, index) => (
+          {posts.map((post, index) => (
             <BlogCard key={post.slug} post={post} delay={index * 0.1} />
           ))}
         </div>
       </div>
 
       <style jsx global>{`
-        @keyframes gradient-x {
-          0%,
-          100% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-        }
-        .animate-gradient-x {
-          background-size: 200% 200%;
-          animation: gradient-x 5s ease infinite;
-        }
-
-        /* Background Blob Animations */
-        @keyframes blob {
-          0% {
-            transform: translate(0px, 0px) scale(1);
-          }
-          33% {
-            transform: translate(30px, -50px) scale(1.1);
-          }
-          66% {
-            transform: translate(-20px, 20px) scale(0.9);
-          }
-          100% {
-            transform: translate(0px, 0px) scale(1);
-          }
-        }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-
-        /* THE SNAKE ROTATION ANIMATION */
         @keyframes border-spin {
           100% {
             transform: rotate(-360deg);
           }
         }
         .animate-border-spin {
-          animation: border-spin 4s linear infinite;
+          animation: border-spin 3s linear infinite;
         }
       `}</style>
     </div>
   );
 }
 
-// --- Component ---
+// --- THE "NOT BORING" CARD ---
 function BlogCard({ post, delay }) {
   return (
-    // 1. OUTER WRAPPER: Handles the fade-in and hover group state
     <div
-      className="group relative h-full flex flex-col animate-fade-in-up"
+      className="group relative h-full animate-fade-in-up"
       style={{ animationDelay: `${delay}s` }}
     >
-      <Link href={`/blog/${post.slug}`} className="relative h-full block">
-        {/* 2. THE SNAKE CONTAINER 
-            p-[2px] creates the gap for the snake to be seen. 
-            overflow-hidden keeps the snake inside the rounded corners.
-        */}
-        <div className="relative h-full w-full rounded-[2rem] overflow-hidden p-[2px] transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-teal-500/20">
-          {/* 3. THE SNAKE ITSELF (Spinning Gradient Background)
-                - This layer is huge (inset-[-100%]) and spins behind the content.
-                - The 'conic-gradient' has a sharp transparent section and a colored section.
-                - We hide it (opacity-0) until hover.
-             */}
+      <Link href={`/blog/${post.slug}`} className="block h-full">
+        {/* OUTER CONTAINER: Lifting & Shadow */}
+        <div className="relative h-full w-full rounded-[2rem] overflow-hidden p-[2px] shadow-lg shadow-slate-200/50 bg-white transition-all duration-300 hover:shadow-2xl hover:shadow-teal-900/10 hover:-translate-y-2">
+          {/* THE SNAKE: Pure Teal, only on hover */}
           <div
             className="absolute inset-[-100%] animate-border-spin opacity-0 group-hover:opacity-100 transition-opacity duration-300"
             style={{
-              background: `conic-gradient(from 0deg, transparent 0 340deg, #14b8a6 360deg)`,
+              background: `conic-gradient(from 0deg, transparent 0 340deg, #0d9488 360deg)`,
             }}
           />
 
-          {/* 4. THE CARD CONTENT (Inner White Box)
-                - This sits ON TOP of the spinning snake.
-                - background-clip ensures it covers the center.
-            */}
-          <div className="relative h-full flex flex-col bg-white/80 backdrop-blur-xl rounded-[1.9rem] overflow-hidden">
+          {/* INNER CARD */}
+          <div className="relative h-full flex flex-col bg-white rounded-[1.9rem] overflow-hidden">
             {/* Image Area */}
-            <div className="relative h-64 w-full overflow-hidden">
+            <div className="relative h-60 w-full overflow-hidden">
               <Image
                 src={post.image}
                 alt={post.title}
                 fill
-                className="object-cover transition-transform duration-700 group-hover:scale-110"
+                className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-              {/* Tag Badge */}
+              {/* TAG: Colored Pill instead of plain text */}
               <div className="absolute top-4 left-4">
-                <span className="bg-white/90 backdrop-blur-md text-slate-800 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 border border-white/20">
-                  <Tag size={10} className="text-teal-500" />
+                <span className="bg-teal-50 text-teal-700 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-sm border border-teal-100 flex items-center gap-1">
+                  <Tag size={10} className="fill-teal-700/20" />
                   {post.tag}
                 </span>
               </div>
             </div>
 
-            {/* Text Area */}
-            <div className="p-8 flex flex-col flex-grow">
-              <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-slate-400 mb-3 tracking-wider">
-                <Calendar size={12} />
-                {post.date}
+            {/* Content Area */}
+            <div className="p-7 flex flex-col flex-grow bg-white border-t border-slate-100">
+              {/* META ROW: Date & Read Time (Visual Variety) */}
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-slate-400">
+                  <Calendar size={12} className="text-indigo-400" />
+                  {post.date}
+                </div>
+                <div className="h-3 w-[1px] bg-slate-200"></div>
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-slate-400">
+                  <Clock size={12} className="text-pink-400" />5 min read
+                </div>
               </div>
 
-              <h3 className="text-2xl font-black leading-tight mb-4 text-slate-900 group-hover:text-teal-600 transition-colors">
+              {/* TITLE: Big, Bold, Changes Color on Hover */}
+              <h3 className="text-2xl font-black leading-[1.1] text-slate-800 group-hover:text-teal-600 transition-colors duration-300 mb-2">
                 {post.title}
               </h3>
 
-              <div className="mt-auto pt-6 flex items-center text-teal-600 text-xs font-black uppercase tracking-widest opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
-                Read Article <ArrowRight size={14} className="ml-2" />
+              {/* DIVIDER */}
+              <div className="mt-auto pt-6 border-t border-slate-50">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-300 uppercase tracking-widest group-hover:text-teal-600 transition-colors">
+                    Read Story
+                  </span>
+
+                  {/* ARROW BUTTON */}
+                  <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-teal-500 group-hover:text-white transition-all duration-300">
+                    <ArrowRight
+                      size={14}
+                      className="-ml-0.5 group-hover:ml-0 transition-all"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>

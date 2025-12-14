@@ -4,22 +4,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Calendar, ArrowRight, Plane } from "lucide-react";
-// We use the relative path that matches your structure
 import { createClient } from "../../utils/supabase/client";
 
 export default function Home() {
-  // 1. STATE: We hold the posts here instead of reading from a file
   const [latestPosts, setLatestPosts] = useState([]);
 
-  // 2. FETCH: Get the data from Supabase when the page loads
   useEffect(() => {
     const fetchPosts = async () => {
       const supabase = createClient();
-
       const { data } = await supabase
         .from("posts")
         .select("*")
-        // Sorts by creation time so you get the newest ones
         .order("created_at", { ascending: false })
         .limit(3);
 
@@ -31,10 +26,10 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="w-full max-w-[100vw] overflow-x-hidden flex flex-col items-center">
+    <div className="w-full max-w-[100vw] overflow-x-hidden flex flex-col items-center bg-slate-50">
       <div className="w-full max-w-[1400px] px-6 pb-20">
         {/* --- 1. HERO SECTION --- */}
-        <header className="relative flex flex-col justify-center items-center min-h-[85vh] md:min-h-[92vh] w-full max-w-4xl mx-auto space-y-8 animate-fade-in text-center">
+        <header className="relative flex flex-col justify-center items-center min-h-[75vh] md:min-h-[80vh] pb-24 w-full max-w-4xl mx-auto space-y-8 animate-fade-in text-center">
           {/* Glow Effect */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] md:w-[600px] md:h-[600px] bg-[var(--color-primary)]/10 rounded-full blur-[80px] md:blur-[120px] -z-10 pointer-events-none"></div>
 
@@ -82,7 +77,7 @@ export default function Home() {
         </header>
 
         {/* --- 2. LATEST BLOGS --- */}
-        <section className="space-y-12 w-full pt-12">
+        <section className="space-y-12 w-full pt-4">
           <div className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-[var(--color-text-muted)]/20 pb-6">
             <div>
               <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight">
@@ -107,7 +102,6 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* 3. MAP OVER THE FETCHED DATA */}
             {latestPosts.map((post, index) => (
               <BlogCard
                 key={post.slug}
@@ -128,11 +122,36 @@ export default function Home() {
           </div>
         </section>
       </div>
+
+      {/* GLOBAL STYLES FOR ANIMATIONS */}
+      <style jsx global>{`
+        /* 1. Ticker Animation */
+        @keyframes plane-float {
+          0%,
+          100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-4px) rotate(-5deg);
+          }
+        }
+
+        /* 2. Snake Border Spin Animation */
+        @keyframes border-spin {
+          100% {
+            transform: rotate(-360deg);
+          }
+        }
+        /* UPDATED SPEED: 1.5s for faster spin */
+        .animate-border-spin {
+          animation: border-spin 1.5s linear infinite;
+        }
+      `}</style>
     </div>
   );
 }
 
-// --- TICKER COMPONENT (2D Animated) ---
+// --- TICKER COMPONENT ---
 function GreetingTicker() {
   const greetings = [
     "Welcome, traveler",
@@ -153,18 +172,6 @@ function GreetingTicker() {
 
   return (
     <div className="flex items-center justify-center gap-4 opacity-90 mb-4 h-12">
-      <style jsx>{`
-        @keyframes plane-float {
-          0%,
-          100% {
-            transform: translateY(0px) rotate(0deg);
-          }
-          50% {
-            transform: translateY(-4px) rotate(-5deg);
-          }
-        }
-      `}</style>
-
       <div
         className="text-[var(--color-primary)]"
         style={{ animation: "plane-float 3s ease-in-out infinite" }}
@@ -194,50 +201,67 @@ function GreetingTicker() {
   );
 }
 
-// --- NEW & IMPROVED: PEARLESCENT DREAM BLOG CARD ---
+// --- PIZAZZ BLOG CARD COMPONENT ---
 function BlogCard({ title, image, tag, date, href, delay }) {
   return (
-    <Link
-      href={href}
-      className="group relative z-0 flex flex-col h-full rounded-3xl bg-white/60 border border-white/60 shadow-sm backdrop-blur-sm overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-teal-900/5 hover:border-white/80"
+    <div
+      className="group relative h-full flex flex-col animate-fade-in-up"
       style={{ animationDelay: `${delay}s` }}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-teal-200/40 via-indigo-200/40 to-pink-200/40 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 -z-10 rounded-3xl"></div>
+      <Link href={href} className="relative h-full block">
+        {/* 1. SNAKE CONTAINER 
+            ADDED: 'shadow-xl shadow-indigo-900/5' gives it depth when NOT hovered.
+            ON HOVER: It switches to a stronger teal glow.
+        */}
+        <div className="relative h-full w-full rounded-[2rem] overflow-hidden p-[2px] transition-all duration-500 shadow-xl shadow-indigo-900/5 hover:-translate-y-2 hover:shadow-2xl hover:shadow-teal-500/20">
+          {/* 2. THE SNAKE: Brighter Teal & Faster Spin */}
+          <div
+            className="absolute inset-[-100%] animate-border-spin opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+            style={{
+              background: `conic-gradient(from 0deg, transparent 0 300deg, #2dd4bf 360deg)`,
+            }}
+          />
 
-      <div className="relative z-10 aspect-[4/3] w-full overflow-hidden">
-        <Image
-          src={image}
-          alt={title}
-          fill
-          className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-110"
-        />
+          {/* 3. INNER CARD: Solid Gradient Background */}
+          <div className="relative h-full flex flex-col bg-gradient-to-br from-white via-slate-50 to-teal-50 rounded-[1.9rem] overflow-hidden border border-white/60">
+            {/* Image Section */}
+            <div className="relative aspect-[4/3] w-full overflow-hidden">
+              <Image
+                src={image}
+                alt={title}
+                fill
+                className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-110"
+              />
+              <div className="absolute top-4 left-4">
+                <span className="px-3 py-1.5 bg-white/90 backdrop-blur-md text-teal-900 text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg border border-white/50">
+                  {tag}
+                </span>
+              </div>
+            </div>
 
-        <div className="absolute top-4 left-4">
-          <span className="px-3 py-1.5 bg-white/90 backdrop-blur-md text-teal-900 text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg border border-white/50">
-            {tag}
-          </span>
-        </div>
-      </div>
+            {/* Text Section */}
+            <div className="relative p-6 flex flex-col flex-grow justify-between gap-4">
+              <h3 className="text-xl md:text-2xl font-bold leading-tight text-slate-900 transition-colors duration-300 group-hover:text-teal-800 line-clamp-2">
+                {title}
+              </h3>
 
-      <div className="relative z-10 p-6 flex flex-col flex-grow justify-between gap-4 bg-white/10">
-        <h3 className="text-xl md:text-2xl font-bold leading-tight text-slate-900 transition-colors duration-300 group-hover:text-teal-800 line-clamp-2">
-          {title}
-        </h3>
+              <div className="flex items-center justify-between pt-4 border-t border-slate-200/60 group-hover:border-teal-100/50 transition-colors">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase text-slate-500 group-hover:text-teal-700/80 transition-colors">
+                  <Calendar size={14} />
+                  {date}
+                </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-slate-200/60 group-hover:border-teal-100/50 transition-colors">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase text-slate-500 group-hover:text-teal-700/80 transition-colors">
-            <Calendar size={14} />
-            {date}
+                <div className="w-8 h-8 rounded-full bg-slate-50/80 flex items-center justify-center group-hover:bg-white transition-colors shadow-sm">
+                  <ArrowRight
+                    size={14}
+                    className="text-slate-400 group-hover:text-teal-600 -translate-x-0.5 group-hover:translate-x-0 transition-transform duration-300"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-
-          <div className="w-8 h-8 rounded-full bg-slate-50/80 flex items-center justify-center group-hover:bg-white transition-colors shadow-sm">
-            <ArrowRight
-              size={14}
-              className="text-slate-400 group-hover:text-teal-600 -translate-x-0.5 group-hover:translate-x-0 transition-transform duration-300"
-            />
-          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }

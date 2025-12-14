@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import Atmosphere from "../../../components/marketing/Atmosphere"; // (Check your path!)
 import {
   Play,
   Pause,
@@ -55,8 +56,8 @@ export default function ActorPage() {
             </div>
           </div>
 
-          {/* TEXT CONTENT */}
-          <div className="flex-1 text-center md:text-left space-y-8 z-10">
+          {/* TEXT CONTENT - CHANGED: text-center removed, now text-left everywhere */}
+          <div className="flex-1 text-left space-y-8 z-10">
             <h1 className="text-4xl md:text-7xl font-black uppercase leading-[0.9] text-slate-900 tracking-tighter">
               Acting <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-indigo-600">
@@ -143,8 +144,8 @@ export default function ActorPage() {
       ========================================= */}
       <section id="career" className="w-full max-w-[1100px] px-6 mx-auto mb-24">
         <div className="flex flex-col-reverse md:flex-row items-center gap-12 md:gap-24">
-          {/* TEXT SIDE */}
-          <div className="flex-1 space-y-6 text-center md:text-left">
+          {/* TEXT SIDE - CHANGED: text-center removed, now text-left everywhere */}
+          <div className="flex-1 space-y-6 text-left">
             <div className="inline-block px-4 py-1.5 bg-indigo-50 text-indigo-900 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-indigo-100">
               The Pivot
             </div>

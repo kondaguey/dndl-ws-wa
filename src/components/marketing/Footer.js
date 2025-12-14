@@ -1,14 +1,14 @@
 "use client";
 import Link from "next/link";
-import Image from "next/image";
+// Image removed
 import { useState, useEffect } from "react";
-import { Facebook, Instagram, Youtube } from "lucide-react"; // Removed Twitter
+import { Facebook, Instagram, Youtube } from "lucide-react";
 
 export default function Footer() {
   const year = new Date().getFullYear();
   const [showToast, setShowToast] = useState(false);
 
-  // Auto-hide the toast after 2 seconds
+  // Auto-hide toast
   useEffect(() => {
     if (showToast) {
       const timer = setTimeout(() => setShowToast(false), 2000);
@@ -22,111 +22,108 @@ export default function Footer() {
   };
 
   return (
-    <footer className="relative w-full bg-[#111] text-[#f8f8f5] pt-20 pb-8 px-6 mt-auto rounded-t-[3rem] overflow-hidden">
+    <footer className="relative w-full bg-[#111] text-[#f8f8f5] pt-10 pb-6 px-6 mt-auto rounded-t-[2rem] overflow-hidden">
       <div className="max-w-[1400px] mx-auto">
-        {/* TOP SECTION: CALL TO ACTION */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-gray-800 pb-12 mb-12">
-          <div className="space-y-4">
-            <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-primary-light)] via-[var(--color-primary)] to-[var(--color-primary-dark)]">
-              Let's Create.
-            </h2>
-            <p className="text-gray-400 max-w-md text-lg">
-              Together, we can make cool sh*t happen.
-            </p>
-          </div>
+        {/* TOP SECTION: CALL TO ACTION (CENTERED) */}
+        <div className="flex flex-col items-center text-center border-b border-gray-800 pb-10 mb-10">
+          <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-primary-light)] via-[var(--color-primary)] to-[var(--color-primary-dark)] mb-4">
+            Let's Create.
+          </h2>
 
-          <div className="mt-8 md:mt-0">
-            <a
-              href="mailto:dm@danielnotdaylewis.com"
-              className="inline-block px-8 py-4 border border-white/20 rounded-full hover:bg-[var(--color-primary)] hover:border-[var(--color-primary)] hover:text-white transition-all duration-300 font-bold uppercase tracking-wider"
-            >
-              Get in Touch
-            </a>
-          </div>
+          <a
+            href="mailto:dm@danielnotdaylewis.com"
+            className="inline-block px-8 py-3 border border-white/20 rounded-full hover:bg-[var(--color-primary)] hover:border-[var(--color-primary)] hover:text-white transition-all duration-300 font-bold uppercase tracking-wider text-xs md:text-sm"
+          >
+            Email's open
+          </a>
         </div>
 
-        {/* MIDDLE: LINKS & SOCIALS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
-          {/* Brand */}
-          <div className="space-y-6">
-            <div className="relative w-32 h-32 opacity-90">
-              <Image
-                src="/images/dndl-logo.webp"
-                alt="Site Logo"
-                fill
-                className="object-contain invert"
-              />
-            </div>
-            <p className="text-sm text-gray-500">
-              Artist by nature.
-              <br />
+        {/* MIDDLE: LINKS & SOCIALS (SPACED EVENLY) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8 w-full">
+          {/* 1. Brand (Centered) */}
+          <div className="flex flex-col items-center justify-center space-y-2 text-center">
+            <Link href="/" className="group inline-block">
+              <h3
+                className="
+                  font-black tracking-tighter leading-none
+                  text-2xl md:text-3xl
+                  text-transparent bg-clip-text
+                  bg-gradient-to-r from-blue-600 to-teal-400
+                  transition-transform duration-300 group-hover:scale-[1.02]
+                "
+              >
+                Daniel (not Day) Lewis
+              </h3>
+            </Link>
+            <p className="text-[10px] md:text-xs text-gray-500 leading-relaxed">
+              Artist by nature. <br className="hidden md:block" />
               Entrepreneur by nurture.
             </p>
           </div>
 
-          {/* Navigation */}
-          <div className="flex flex-col gap-2">
-            <h4 className="text-gray-500 font-bold uppercase text-xs tracking-widest mb-2">
-              Explore
-            </h4>
-            <Link
-              href="/actor"
-              className="hover:text-[var(--color-primary-light)] transition-colors w-fit"
-            >
-              Voice Actor
-            </Link>
-            <Link
-              href="/endeavors"
-              className="hover:text-[var(--color-primary-light)] transition-colors w-fit"
-            >
-              Endeavors
-            </Link>
-            <Link
-              href="/blog"
-              className="hover:text-[var(--color-primary-light)] transition-colors w-fit"
-            >
-              Blog
-            </Link>
+          {/* 2. Navigation (Centered) */}
+          <div className="flex flex-col items-center justify-center gap-2 text-center">
+            {/* Horizontal Layout for both Mobile and Desktop for symmetry */}
+            <div className="flex gap-4 text-sm md:text-base">
+              <Link
+                href="/actor"
+                className="hover:text-[var(--color-primary-light)] transition-colors"
+              >
+                Voice Actor
+              </Link>
+              <span className="text-gray-700">|</span>
+              <Link
+                href="/endeavors"
+                className="hover:text-[var(--color-primary-light)] transition-colors"
+              >
+                Endeavors
+              </Link>
+              <span className="text-gray-700">|</span>
+              <Link
+                href="/blog"
+                className="hover:text-[var(--color-primary-light)] transition-colors"
+              >
+                Blog
+              </Link>
+            </div>
           </div>
 
-          {/* Socials */}
-          <div className="flex gap-4 items-start flex-wrap">
-            {/* ACTIVE LINK */}
-            <SocialButton
-              href="https://www.facebook.com/danlewisaudiobookactor"
-              icon={<Facebook size={20} />}
-              label="Facebook"
-            />
-
-            {/* INACTIVE LINKS (Trigger Popup) */}
-            <SocialButton
-              onClick={handleInactiveClick}
-              icon={<Instagram size={20} />}
-              label="Instagram"
-            />
-            {/* REPLACED TWITTER WITH X */}
-            <SocialButton
-              onClick={handleInactiveClick}
-              icon={<XIcon size={16} />} // Size 16 usually balances better for X
-              label="X"
-            />
-            <SocialButton
-              onClick={handleInactiveClick}
-              icon={<Youtube size={20} />}
-              label="YouTube"
-            />
-            <SocialButton
-              onClick={handleInactiveClick}
-              icon={<TikTokIcon size={20} />}
-              label="TikTok"
-            />
+          {/* 3. Socials (Centered) */}
+          <div className="flex flex-col items-center justify-center gap-2 text-center">
+            <div className="flex gap-3 justify-center">
+              <SocialButton
+                href="https://www.facebook.com/danlewisaudiobookactor"
+                icon={<Facebook size={16} />}
+                label="Facebook"
+              />
+              <SocialButton
+                onClick={handleInactiveClick}
+                icon={<Instagram size={16} />}
+                label="Instagram"
+              />
+              <SocialButton
+                onClick={handleInactiveClick}
+                icon={<XIcon size={12} />}
+                label="X"
+              />
+              <SocialButton
+                onClick={handleInactiveClick}
+                icon={<Youtube size={16} />}
+                label="YouTube"
+              />
+              <SocialButton
+                onClick={handleInactiveClick}
+                icon={<TikTokIcon size={16} />}
+                label="TikTok"
+              />
+            </div>
           </div>
         </div>
 
         {/* BOTTOM: LEGAL */}
-        <div className="flex flex-col md:flex-row justify-between items-center text-xs text-gray-600 pt-8 border-t border-gray-900">
-          <p>© {year} Daniel Lewis. All rights reserved.</p>
-          <div className="flex gap-4 mt-4 md:mt-0">
+        <div className="flex flex-col md:flex-row justify-between items-center text-[10px] text-gray-600 pt-4 border-t border-gray-900 gap-2 md:gap-0">
+          <p>© {year} Daniel Lewis.</p>
+          <div className="flex gap-4">
             <Link
               href="/legal/terms-of-use"
               className="hover:text-white transition-colors"
@@ -143,7 +140,7 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* --- THE TOAST NOTIFICATION --- */}
+      {/* --- TOAST --- */}
       <div
         className={`fixed bottom-8 left-1/2 -translate-x-1/2 bg-[var(--color-primary)] text-white px-6 py-3 rounded-full shadow-2xl font-bold uppercase tracking-widest text-xs z-50 transition-all duration-300 transform ${
           showToast
@@ -161,7 +158,7 @@ export default function Footer() {
 
 function SocialButton({ href, onClick, icon, label }) {
   const commonClasses =
-    "w-10 h-10 rounded-full border border-gray-700 flex items-center justify-center hover:bg-[var(--color-primary)] hover:border-[var(--color-primary)] hover:text-white transition-all duration-300 group bg-[#1a1a1a]";
+    "w-8 h-8 md:w-9 md:h-9 rounded-full border border-gray-700 flex items-center justify-center hover:bg-[var(--color-primary)] hover:border-[var(--color-primary)] hover:text-white transition-all duration-300 group bg-[#1a1a1a]";
 
   if (href) {
     return (
@@ -188,7 +185,6 @@ function SocialButton({ href, onClick, icon, label }) {
   );
 }
 
-// Custom TikTok SVG
 function TikTokIcon({ size = 24 }) {
   return (
     <svg
@@ -206,14 +202,13 @@ function TikTokIcon({ size = 24 }) {
   );
 }
 
-// Custom X (formerly Twitter) SVG
 function XIcon({ size = 24 }) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="currentColor" /* X logo uses fill, not stroke */
+      fill="currentColor"
       stroke="none"
     >
       <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" />

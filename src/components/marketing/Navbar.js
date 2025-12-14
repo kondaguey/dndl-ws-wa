@@ -1,6 +1,6 @@
 "use client";
+
 import Link from "next/link";
-import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Menu, X, Telescope, ArrowRight } from "lucide-react";
@@ -18,26 +18,30 @@ export default function Navbar() {
   const searchRef = useRef(null);
   const router = useRouter();
 
-  // FETCH DATA ON MOUNT
+  // FETCH DATA
   useEffect(() => {
     const fetchSearchData = async () => {
-      const supabase = createClient();
-      const { data } = await supabase.from("posts").select("title, slug, tag");
-      if (data) {
-        setAllPosts(data);
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from("posts")
+          .select("title, slug, tag");
+        if (data) setAllPosts(data);
+      } catch (error) {
+        console.error("Supabase error:", error);
       }
     };
     fetchSearchData();
   }, []);
 
-  // Handle Scroll
+  // SCROLL HANDLER
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Handle Search Logic
+  // SEARCH LOGIC
   useEffect(() => {
     if (query.length > 0 && allPosts.length > 0) {
       const filtered = allPosts.filter(
@@ -51,7 +55,7 @@ export default function Navbar() {
     }
   }, [query, allPosts]);
 
-  // Handle Click Outside
+  // CLICK OUTSIDE
   useEffect(() => {
     function handleClickOutside(event) {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -82,68 +86,46 @@ export default function Navbar() {
 
   return (
     <>
-      <style jsx global>{`
-        @keyframes wiggle {
-          0%,
-          100% {
-            transform: rotate(0deg);
-          }
-          25% {
-            transform: rotate(-15deg);
-          }
-          75% {
-            transform: rotate(15deg);
-          }
-        }
-        .monoscope-hover:hover .monoscope-icon {
-          animation: wiggle 0.5s ease-in-out;
-        }
-      `}</style>
-
       <header
-        className={`fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none
-        ${scrolled ? "pt-4" : "pt-6 md:pt-10"}`}
+        className={`fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-300 ease-in-out pointer-events-none
+        ${scrolled ? "md:pt-4" : "md:pt-8"}`}
       >
         <div
           className={`
             relative flex items-center justify-between pointer-events-auto
-            transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
+            transition-all duration-300 ease-in-out
+            
+            /* --- MOBILE: SLIM & FLUSH --- */
+            w-full px-4 py-3 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm
+            
+            /* --- DESKTOP: FLOATING PILL --- */
+            md:bg-transparent md:border-transparent md:shadow-none
             ${
               scrolled
-                ? "w-[95%] md:w-[75%] py-2 px-4 md:px-8 rounded-full shadow-2xl shadow-teal-900/10 backdrop-blur-3xl " +
-                  "border border-white/50 ring-1 ring-white/60 " +
-                  "bg-gradient-to-br from-white/90 via-teal-50/80 to-teal-200/60"
-                : "w-full max-w-[1400px] py-4 px-6 md:px-12 bg-transparent border-transparent"
+                ? /* 👇 HERE IS THE MAGIC GRADIENT TINT RESTORED 👇 */
+                  "md:w-[85%] md:px-8 md:py-3 md:rounded-full md:shadow-2xl md:shadow-teal-900/10 md:backdrop-blur-3xl md:border md:border-white/50 md:bg-gradient-to-br md:from-white/90 md:via-teal-50/80 md:to-teal-200/60"
+                : "md:w-full md:max-w-[1400px] md:px-12 md:py-4"
             }
           `}
         >
-          {/* LEFT: LOGO */}
-          <Link
-            href="/"
-            className="relative z-50 flex items-center justify-center shrink-0"
-          >
-            <div
-              className={`relative flex items-center justify-center transition-all duration-500 ${
-                scrolled ? "w-14 h-14" : "w-16 h-16 md:w-20 md:h-20"
-              }`}
+          {/* LEFT: TEXT LOGO (LARGE & GRADIENT) */}
+          <Link href="/" className="relative z-50 flex items-center group">
+            <h1
+              className="
+              font-black tracking-tighter leading-none
+              text-xl md:text-3xl
+              text-transparent bg-clip-text
+              bg-gradient-to-r from-blue-500 to-teal-400 pr-8
+              transition-transform duration-300 group-hover:scale-[1.02]
+            "
             >
-              <Image
-                src="/images/dndl-logo.webp"
-                alt="Logo"
-                fill
-                className={`object-contain drop-shadow-md transition-all duration-500 ${
-                  scrolled
-                    ? "scale-[1.8]" // CHANGED: Was "scale-125" (Made it much bigger)
-                    : "scale-[1.8] md:scale-[2.5] origin-top-left md:origin-center"
-                }`}
-                priority
-              />
-            </div>
+              Daniel (not Day) Lewis
+            </h1>
           </Link>
 
-          {/* RIGHT: NAV + SEARCH + MENU */}
+          {/* RIGHT: NAV ITEMS */}
           <div className="flex items-center gap-3 md:gap-6">
-            {/* DESKTOP NAV */}
+            {/* DESKTOP LINKS */}
             <nav className="hidden md:flex items-center gap-8">
               {navLinks.map((link) => (
                 <Link
@@ -151,48 +133,33 @@ export default function Navbar() {
                   href={link.href}
                   className="relative group py-2"
                 >
-                  <span
-                    className={`text-sm font-black uppercase tracking-widest transition-colors hover:text-[var(--color-primary)] ${
-                      scrolled
-                        ? "text-slate-900"
-                        : "text-[var(--color-text-main)]"
-                    }`}
-                  >
+                  <span className="text-sm font-black uppercase tracking-widest text-slate-800 hover:text-teal-600 transition-colors">
                     {link.name}
                   </span>
-                  <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[var(--color-primary)] transition-all duration-300 group-hover:w-full"></span>
+                  <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-teal-400 transition-all duration-300 group-hover:w-full"></span>
                 </Link>
               ))}
             </nav>
 
-            <div
-              className={`hidden md:block h-6 w-[1px] ${
-                scrolled ? "bg-teal-900/10" : "bg-black/10"
-              }`}
-            ></div>
+            {/* DIVIDER */}
+            <div className="hidden md:block h-5 w-[1px] bg-slate-400/20"></div>
 
-            {/* --- FUNCTIONAL SEARCH BAR --- */}
+            {/* SEARCH BAR */}
             <div ref={searchRef} className="relative z-50">
               <form
                 onSubmit={handleSearchSubmit}
-                className={`monoscope-hover group flex items-center gap-2 rounded-full px-3 py-1.5 transition-all duration-300 ${
-                  scrolled
-                    ? "bg-white/40 border border-teal-100/50 hover:bg-white/80"
-                    : "bg-white/40 border border-white/20 backdrop-blur-sm hover:bg-white/80"
-                } ${isSearchOpen ? "bg-white ring-2 ring-teal-200" : ""}`}
+                className={`flex items-center gap-2 rounded-full px-3 py-1.5 transition-all duration-300 ${
+                  isSearchOpen
+                    ? "bg-white ring-2 ring-teal-100 w-full shadow-lg"
+                    : "bg-slate-100/50 hover:bg-white/80 border border-transparent hover:border-white/50"
+                }`}
               >
-                {/* TELESCOPE TOGGLE */}
                 <button
                   type="button"
                   onClick={() => setIsSearchOpen(!isSearchOpen)}
-                  className="focus:outline-none"
+                  className="focus:outline-none text-slate-500 hover:text-teal-600 transition-colors"
                 >
-                  <Telescope
-                    size={18}
-                    className={`monoscope-icon transition-colors ${
-                      scrolled ? "text-teal-700" : "text-gray-600"
-                    }`}
-                  />
+                  <Telescope size={18} />
                 </button>
 
                 <input
@@ -203,21 +170,19 @@ export default function Navbar() {
                     if (!isSearchOpen) setIsSearchOpen(true);
                   }}
                   onFocus={() => setIsSearchOpen(true)}
-                  placeholder="Search..."
-                  className={`bg-transparent text-xs font-bold uppercase tracking-wider outline-none placeholder:text-gray-500/70 transition-all duration-300 
+                  placeholder="SEARCH"
+                  className={`bg-transparent text-xs font-bold uppercase tracking-wider outline-none placeholder:text-slate-400 transition-all duration-300 
                     ${
                       isSearchOpen
-                        ? "w-32 md:w-40 opacity-100 pl-1"
-                        : "w-0 opacity-0 p-0"
-                    }
-                    ${scrolled ? "text-teal-900" : "text-gray-800"}
-                  `}
+                        ? "w-32 md:w-40 opacity-100 text-slate-800 pl-1"
+                        : "w-0 opacity-0"
+                    }`}
                 />
               </form>
 
-              {/* --- SEARCH RESULTS DROPDOWN --- */}
+              {/* SEARCH DROPDOWN */}
               {query && isSearchOpen && (
-                <div className="absolute top-full right-0 mt-3 w-64 md:w-80 rounded-2xl overflow-hidden border border-white/40 bg-white/80 backdrop-blur-xl shadow-2xl shadow-teal-900/10 flex flex-col animate-fade-in-up">
+                <div className="absolute top-full right-0 mt-3 w-72 rounded-xl border border-gray-100 bg-white/90 backdrop-blur-xl shadow-xl overflow-hidden flex flex-col">
                   {results.length > 0 ? (
                     results.map((post) => (
                       <Link
@@ -227,24 +192,19 @@ export default function Navbar() {
                           setQuery("");
                           setIsSearchOpen(false);
                         }}
-                        className="flex flex-col gap-1 p-4 border-b border-teal-50 last:border-0 hover:bg-teal-50/80 transition-colors group"
+                        className="p-4 border-b border-gray-50 hover:bg-teal-50 flex justify-between items-center group"
                       >
-                        <span className="font-bold text-slate-800 text-sm line-clamp-1 group-hover:text-teal-700">
+                        <span className="font-bold text-sm text-slate-700 group-hover:text-teal-700 line-clamp-1">
                           {post.title}
                         </span>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-teal-600/70">
-                            {post.tag || "Post"}
-                          </span>
-                          <ArrowRight
-                            size={12}
-                            className="text-teal-400 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all"
-                          />
-                        </div>
+                        <ArrowRight
+                          size={14}
+                          className="text-teal-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                        />
                       </Link>
                     ))
                   ) : (
-                    <div className="p-4 text-xs font-bold text-gray-400 text-center uppercase tracking-widest">
+                    <div className="p-4 text-xs font-bold text-gray-400 text-center uppercase">
                       No results found
                     </div>
                   )}
@@ -252,13 +212,9 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* MOBILE MENU TOGGLE */}
+            {/* MOBILE MENU BUTTON */}
             <button
-              className={`md:hidden p-2 rounded-full transition-transform active:scale-90 ${
-                scrolled
-                  ? "text-slate-900"
-                  : "bg-[var(--color-surface)] shadow-md text-[var(--color-text-main)]"
-              }`}
+              className="md:hidden p-2 text-slate-800"
               onClick={() => setIsOpen(true)}
             >
               <Menu size={24} />
@@ -269,31 +225,28 @@ export default function Navbar() {
 
       {/* MOBILE FULLSCREEN MENU */}
       <div
-        className={`fixed inset-0 z-[60] bg-[#fdfdfc]/95 backdrop-blur-3xl flex flex-col items-center justify-center gap-10 transition-all duration-500
+        className={`fixed inset-0 z-[60] bg-white/95 backdrop-blur-xl flex flex-col items-center justify-center gap-8 transition-all duration-300
         ${
           isOpen
-            ? "opacity-100 translate-y-0 pointer-events-auto"
-            : "opacity-0 -translate-y-10 pointer-events-none"
+            ? "opacity-100 visible"
+            : "opacity-0 invisible pointer-events-none"
         }`}
       >
         <button
           onClick={() => setIsOpen(false)}
-          className="absolute top-8 right-8 p-3 rounded-full bg-white shadow-lg text-slate-800 hover:rotate-90 transition-transform duration-300"
+          className="absolute top-6 right-6 p-2 text-slate-800"
         >
           <X size={32} />
         </button>
 
-        {navLinks.map((link, i) => (
+        {navLinks.map((link) => (
           <Link
             key={link.name}
             href={link.href}
             onClick={() => setIsOpen(false)}
-            className="group text-4xl md:text-6xl font-black uppercase tracking-tighter text-slate-800 transition-all hover:scale-105"
-            style={{ transitionDelay: `${i * 50}ms` }}
+            className="text-3xl font-black uppercase tracking-tighter text-slate-900 hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-teal-400 hover:to-indigo-500 transition-all"
           >
-            <span className="group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-[var(--color-primary)] group-hover:to-[var(--color-primary-light)] transition-all">
-              {link.name}
-            </span>
+            {link.name}
           </Link>
         ))}
       </div>
