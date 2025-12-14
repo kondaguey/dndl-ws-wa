@@ -175,7 +175,6 @@ export default function ActorPage() {
             <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-32 h-10 bg-white/30 backdrop-blur-[2px] border-l border-r border-white/40 rotate-[-3deg] shadow-sm z-30 pointer-events-none opacity-80 mix-blend-hard-light"></div>
 
             {/* THE POLAROID CARD */}
-            {/* Added 'w-72 mx-auto' to ensure fixed width on mobile */}
             <div className="relative bg-white p-3 pb-16 rounded shadow-[0_20px_50px_rgba(0,0,0,0.15)] rotate-3 group-hover:rotate-0 transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] w-72 md:w-[320px] mx-auto border border-slate-100">
               {/* Image Container */}
               <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden filter contrast-110">
@@ -221,21 +220,29 @@ export default function ActorPage() {
               </div>
             </div>
 
-            {/* VIDEO PLAYER */}
+            {/* VIDEO PLAYER - FIXED FOR IPHONE & LOCALHOST */}
             <div className="relative group overflow-hidden rounded-[1.5rem] bg-slate-900 shadow-lg aspect-video w-full">
               <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay pointer-events-none"></div>
               <div className="relative h-full w-full flex items-center justify-center bg-black">
                 <div className="absolute top-4 left-4 z-20 bg-white/10 backdrop-blur-md pl-2 pr-3 py-1 rounded-full text-white text-[10px] font-bold uppercase tracking-widest border border-white/20 flex items-center gap-2">
                   <VideoIcon size={12} /> Video Praise
                 </div>
+
+                {/* UPDATED VIDEO TAG: 
+                   1. src is direct (no <source>)
+                   2. playsInline added for iPhone
+                   3. preload="auto" for speed
+                */}
                 <video
                   key="video-praise"
                   className="w-full h-full object-contain opacity-90 group-hover:opacity-100 transition-opacity duration-500"
+                  src="https://gpjgvdpicjqrerqqzhyx.supabase.co/storage/v1/object/public/videos/never-far-author-testimonial.mp4"
                   controls
-                  preload="metadata"
+                  playsInline
+                  preload="auto"
                   poster="/images/dndl-praise-poster.webp"
                 >
-                  <source src="https://gpjgvdpicjqrerqqzhyx.supabase.co/storage/v1/object/public/videos/never-far-author-testimonial.mp4.mp4" />
+                  Your browser does not support the video tag.
                 </video>
               </div>
             </div>
@@ -388,7 +395,6 @@ export default function ActorPage() {
           7. FLOATING AUDIO PLAYER (STICKY)
       ========================================= */}
       <div className="fixed bottom-2 left-2 right-2 md:bottom-6 md:left-4 md:right-4 z-50 flex justify-center pointer-events-none">
-        {/* FIX: Increased max-width for desktop (max-w-3xl) to make it wider */}
         <div className="pointer-events-auto w-full max-w-sm md:max-w-3xl">
           <AudioPlayer />
         </div>
@@ -535,15 +541,18 @@ function AudioPlayer() {
   const tracks = [
     {
       title: "Emotional/Angsty",
-      src: "/audio/demo_neverfar.mp3",
-      explicit: true, // <--- THE FLAG
+      src: "https://gpjgvdpicjqrerqqzhyx.supabase.co/storage/v1/object/public/audio/demo_neverfar.mp3",
+      explicit: true,
     },
     {
       title: "M/F Dialogue",
-      src: "/audio/demo_filthy_rich_santas_female_dialogue.mp3",
+      src: "https://gpjgvdpicjqrerqqzhyx.supabase.co/storage/v1/object/public/audio/demo_filthy_rich_santas_female_dialogue.mp3",
     },
 
-    { title: "Character Interaction", src: "/audio/demo-rtibw-amos-intro.mp3" },
+    {
+      title: "Character Interaction",
+      src: "https://gpjgvdpicjqrerqqzhyx.supabase.co/storage/v1/object/public/audio/demo-rtibw-amos-intro.mp3",
+    },
   ];
 
   // Logic: Select Track & Play
@@ -605,7 +614,7 @@ function AudioPlayer() {
   // Helper: Get Current Track Info
   const currentTrackObj = tracks.find((t) => t.src === activeTrack);
   const currentTitle = currentTrackObj?.title || "Select a Demo";
-  const isExplicit = currentTrackObj?.explicit; // Check for flag
+  const isExplicit = currentTrackObj?.explicit;
 
   return (
     <div className="bg-white/80 backdrop-blur-xl p-2 md:py-3 md:px-6 rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] border border-white/60 ring-1 ring-black/5 animate-fade-in-up">
