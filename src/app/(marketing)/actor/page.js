@@ -101,8 +101,9 @@ export default function ActorPage() {
               <p>
                 Regardless, I hit the professional scene hard. I signed with
                 Chicago’s leading talent agency and earned my SAG card doing
-                national theatrical tours, regional commercials, and delivering
-                the "hahas" ala a KFC spot. But the industry had other plans.
+                national theatrical tours, some primetime recurring roles, and
+                delivering the "hahas" ala a KFC spot. But the industry had
+                other plans.
               </p>
             </div>
           </div>

@@ -45,8 +45,7 @@ export default function Home() {
           </h1>
 
           <p className="text-lg md:text-2xl text-[var(--color-text-muted)] max-w-2xl mx-auto font-light leading-relaxed">
-            Just an indecisively decisive guy trying to become lucid in this
-            weird{" "}
+            Just an indecisively decisive guy trying to become lucid in this{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
               liminal dreamworld
             </span>

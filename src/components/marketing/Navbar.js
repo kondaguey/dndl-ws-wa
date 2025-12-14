@@ -6,6 +6,32 @@ import { useRouter } from "next/navigation";
 import { Menu, X, Telescope, ArrowRight, Mic } from "lucide-react";
 import { createClient } from "../../utils/supabase/client";
 
+// --- COMPONENT EXTRACTED OUTSIDE TO PREVENT RE-RENDER BUGS ---
+const AudiobookButton = ({ mobile = false, onClick }) => (
+  <Link
+    href="/scheduler" // FIXED: Changed from /scheduler to /schedule to match your static pages
+    onClick={onClick}
+    className={`
+      relative group overflow-hidden rounded-full 
+      transition-all duration-300 hover:scale-105 hover:shadow-[0_0_20px_rgba(20,184,166,0.5)]
+      ${
+        mobile
+          ? "w-full max-w-xs py-4 text-center mt-4" // Mobile styles
+          : "px-5 py-2 hidden lg:block" // Desktop styles
+      }
+    `}
+  >
+    {/* MOVING GRADIENT BACKGROUND */}
+    <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-teal-400 via-indigo-500 to-blue-600 bg-[length:200%_auto] animate-gradient-xy" />
+
+    {/* CONTENT */}
+    <div className="relative flex items-center justify-center gap-2 text-white font-black uppercase tracking-widest text-[10px] md:text-xs">
+      <span>Make an Audiobook</span>
+      <Mic size={mobile ? 16 : 12} className="fill-white/20" />
+    </div>
+  </Link>
+);
+
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -14,14 +40,26 @@ export default function Navbar() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [allContent, setAllContent] = useState([]); // Renamed from allPosts to reflect it has pages too
+  const [allContent, setAllContent] = useState([]);
   const searchRef = useRef(null);
   const router = useRouter();
+
+  // --- 1. BODY SCROLL LOCK (MAKES MENU "STURDY") ---
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden"; // Disable scroll on body
+    } else {
+      document.body.style.overflow = "unset"; // Re-enable scroll
+    }
+    // Cleanup function to ensure scroll is restored if component unmounts
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
 
   // FETCH DATA (PAGES + BLOGS)
   useEffect(() => {
     const fetchSearchData = async () => {
-      // 1. Define Static Pages manually
       const staticPages = [
         { title: "Home", slug: "/", tag: "Main" },
         { title: "(Voice) Actor", slug: "/actor", tag: "Portfolio" },
@@ -32,21 +70,18 @@ export default function Navbar() {
 
       try {
         const supabase = createClient();
-        // 2. Fetch Blog Posts
         const { data } = await supabase
           .from("posts")
           .select("title, slug, tag");
 
-        // 3. Format Blogs to match Page structure (prepend /blog/ to slug)
         const formattedBlogs = data
           ? data.map((post) => ({
               ...post,
-              slug: `/blog/${post.slug}`, // Standardize the link here
-              tag: post.tag || "Blog", // Ensure there is a tag
+              slug: `/blog/${post.slug}`,
+              tag: post.tag || "Blog",
             }))
           : [];
 
-        // 4. Combine them
         setAllContent([...staticPages, ...formattedBlogs]);
       } catch (error) {
         console.error("Supabase error:", error);
@@ -78,7 +113,7 @@ export default function Navbar() {
     }
   }, [query, allContent]);
 
-  // CLICK OUTSIDE
+  // CLICK OUTSIDE SEARCH
   useEffect(() => {
     function handleClickOutside(event) {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -93,7 +128,6 @@ export default function Navbar() {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (results.length > 0) {
-      // Since we standardized the 'slug' in the fetch, we can just push directly
       router.push(results[0].slug);
       setQuery("");
       setResults([]);
@@ -107,32 +141,6 @@ export default function Navbar() {
     { name: "collab", href: "/collab" },
     { name: "blog", href: "/blog" },
   ];
-
-  // --- THE BEAUTIFUL BUTTON COMPONENT ---
-  const AudiobookButton = ({ mobile = false }) => (
-    <Link
-      href="/schedule"
-      onClick={() => setIsOpen(false)}
-      className={`
-        relative group overflow-hidden rounded-full 
-        transition-all duration-300 hover:scale-105 hover:shadow-[0_0_20px_rgba(20,184,166,0.5)]
-        ${
-          mobile
-            ? "w-full max-w-xs py-4 text-center mt-4"
-            : "px-5 py-2 hidden lg:block"
-        }
-      `}
-    >
-      {/* MOVING GRADIENT BACKGROUND */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-teal-400 via-indigo-500 to-blue-600 bg-[length:200%_auto] animate-gradient-xy" />
-
-      {/* CONTENT */}
-      <div className="relative flex items-center justify-center gap-2 text-white font-black uppercase tracking-widest text-[10px] md:text-xs">
-        <span>Make an Audiobook</span>
-        <Mic size={mobile ? 16 : 12} className="fill-white/20" />
-      </div>
-    </Link>
-  );
 
   return (
     <>
@@ -152,13 +160,12 @@ export default function Navbar() {
             md:bg-transparent md:border-transparent md:shadow-none
             ${
               scrolled
-                ? /* 👇 GRADIENT TINT 👇 */
-                  "md:w-[85%] md:px-8 md:py-3 md:rounded-full md:shadow-2xl md:shadow-teal-900/10 md:backdrop-blur-3xl md:border md:border-white/50 md:bg-gradient-to-br md:from-white/90 md:via-teal-50/80 md:to-teal-200/60"
+                ? "md:w-[85%] md:px-8 md:py-3 md:rounded-full md:shadow-2xl md:shadow-teal-900/10 md:backdrop-blur-3xl md:border md:border-white/50 md:bg-gradient-to-br md:from-white/90 md:via-teal-50/80 md:to-teal-200/60"
                 : "md:w-full md:max-w-[1400px] md:px-12 md:py-4"
             }
           `}
         >
-          {/* LEFT: TEXT LOGO (LARGE & GRADIENT) */}
+          {/* LEFT: TEXT LOGO */}
           <Link href="/" className="relative z-50 flex items-center group">
             <h1
               className="
@@ -191,7 +198,6 @@ export default function Navbar() {
               ))}
             </nav>
 
-            {/* DIVIDER */}
             <div className="hidden md:block h-5 w-[1px] bg-slate-400/20"></div>
 
             {/* SEARCH BAR */}
@@ -229,7 +235,6 @@ export default function Navbar() {
                     }`}
                 />
 
-                {/* --- DESKTOP SEARCH EXIT BUTTON --- */}
                 {isSearchOpen && (
                   <button
                     type="button"
@@ -248,14 +253,12 @@ export default function Navbar() {
                 )}
               </form>
 
-              {/* SEARCH DROPDOWN */}
               {query && isSearchOpen && (
                 <div className="absolute top-full right-0 mt-3 w-72 rounded-xl border border-gray-100 bg-white/90 backdrop-blur-xl shadow-xl overflow-hidden flex flex-col">
                   {results.length > 0 ? (
                     results.map((item) => (
                       <Link
                         key={item.slug}
-                        // LINK FIX: Use the slug directly since we formatted it in the fetch
                         href={item.slug}
                         onClick={() => {
                           setQuery("");
@@ -267,7 +270,6 @@ export default function Navbar() {
                           <span className="font-bold text-sm text-slate-700 group-hover:text-teal-700 line-clamp-1">
                             {item.title}
                           </span>
-                          {/* SHOW THE TAG FOR CONTEXT */}
                           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                             {item.tag}
                           </span>
@@ -287,8 +289,8 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* --- DESKTOP AUDIOBOOK BUTTON --- */}
-            <AudiobookButton />
+            {/* DESKTOP AUDIOBOOK BUTTON */}
+            <AudiobookButton onClick={() => setIsOpen(false)} />
 
             {/* MOBILE MENU BUTTON */}
             <button
@@ -301,39 +303,43 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* MOBILE FULLSCREEN MENU */}
+      {/* --- MOBILE FULLSCREEN MENU --- */}
+      {/* Added touch-none to backdrop, and overflow-y-auto to container for sturdiness */}
       <div
-        className={`fixed inset-0 z-[60] bg-white/95 backdrop-blur-xl flex flex-col items-center justify-center gap-8 transition-all duration-300
+        className={`fixed inset-0 z-[60] bg-white/95 backdrop-blur-xl transition-all duration-300
         ${
           isOpen
             ? "opacity-100 visible"
             : "opacity-0 invisible pointer-events-none"
         }`}
       >
-        {/* --- MOBILE EXIT BUTTON (THEMED) --- */}
-        <button
-          onClick={() => setIsOpen(false)}
-          className="absolute top-6 right-6 group p-3 rounded-full bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-teal-100 transition-all duration-300"
-        >
-          <X
-            size={24}
-            className="text-slate-400 group-hover:text-teal-500 group-hover:rotate-90 transition-transform duration-300 ease-out"
-          />
-        </button>
-
-        {navLinks.map((link) => (
-          <Link
-            key={link.name}
-            href={link.href}
+        {/* Container manages its own scroll if content is too tall (tiny phones), but body scroll is locked via useEffect */}
+        <div className="w-full h-full overflow-y-auto flex flex-col items-center justify-center gap-6 px-4">
+          {/* MOBILE EXIT BUTTON */}
+          <button
             onClick={() => setIsOpen(false)}
-            className="text-3xl font-black uppercase tracking-tighter text-slate-900 hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-teal-400 hover:to-indigo-500 transition-all"
+            className="absolute top-6 right-6 group p-3 rounded-full bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-teal-100 transition-all duration-300 z-50"
           >
-            {link.name}
-          </Link>
-        ))}
+            <X
+              size={24}
+              className="text-slate-400 group-hover:text-teal-500 group-hover:rotate-90 transition-transform duration-300 ease-out"
+            />
+          </button>
 
-        {/* --- MOBILE AUDIOBOOK BUTTON --- */}
-        <AudiobookButton mobile={true} />
+          {navLinks.map((link) => (
+            <Link
+              key={link.name}
+              href={link.href}
+              onClick={() => setIsOpen(false)}
+              className="text-3xl font-black uppercase tracking-tighter text-slate-900 hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-teal-400 hover:to-indigo-500 transition-all"
+            >
+              {link.name}
+            </Link>
+          ))}
+
+          {/* MOBILE AUDIOBOOK BUTTON */}
+          <AudiobookButton mobile={true} onClick={() => setIsOpen(false)} />
+        </div>
       </div>
     </>
   );
