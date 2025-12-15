@@ -3,8 +3,34 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Calendar, ArrowRight, Plane } from "lucide-react";
+import { Calendar, ArrowRight } from "lucide-react";
 import { createClient } from "../../utils/supabase/client";
+
+// --- 1. HELPER COMPONENT: WAVY LINK ---
+// Defined here so it is guaranteed to be found.
+// --- 1. HELPER COMPONENT: WAVY LINK ---
+const WavyLink = ({ href, text }) => {
+  return (
+    <Link
+      href={href}
+      className="wavy-link inline-block whitespace-nowrap cursor-pointer"
+    >
+      {text.split("").map((char, index) => (
+        <span
+          key={index}
+          className="wave-char"
+          style={{
+            // Stagger the animation by 0.1s per letter for a smooth ripple
+            animationDelay: `${index * 0.15}s`,
+            marginRight: char === " " ? "0.3em" : "0",
+          }}
+        >
+          {char}
+        </span>
+      ))}
+    </Link>
+  );
+};
 
 export default function Home() {
   const [latestPosts, setLatestPosts] = useState([]);
@@ -26,30 +52,24 @@ export default function Home() {
   }, []);
 
   return (
-    // FIX APPLIED HERE: Added 'pt-20 md:pt-40' to push content down below Navbar.
-    // 'bg-slate-50' ensures the background color extends behind the Navbar.
     <div className="w-full max-w-[100vw] overflow-x-hidden flex flex-col items-center bg-slate-50 pt-20 md:pt-40">
       <div className="w-full max-w-[1400px] px-6 pb-20">
-        {/* --- 1. HERO SECTION --- */}
+        {/* --- HERO SECTION --- */}
         <header className="relative flex flex-col justify-center items-center min-h-[75vh] md:min-h-[80vh] pb-24 w-full max-w-4xl mx-auto space-y-8 animate-fade-in text-center">
           {/* Glow Effect */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] md:w-[600px] md:h-[600px] bg-[var(--color-primary)]/10 rounded-full blur-[80px] md:blur-[120px] -z-10 pointer-events-none"></div>
 
-          {/* --- 2D FLYING TICKER --- */}
-          <GreetingTicker />
-
           {/* H1: Teal Shiny Gradient */}
-          <h1 className="text-4xl md:text-7xl font-black leading-[0.95] tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-[var(--color-primary-dark)] via-[var(--color-primary-light)] to-[var(--color-primary)] pb-2">
+          <h1 className="text-2xl md:text-5xl font-black leading-[0.95] tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-[var(--color-primary-dark)] via-[var(--color-primary-light)] to-[var(--color-primary)] pb-2 font-thin">
             Artist by nature. <br />
             Entrepreneur by nurture.
           </h1>
 
+          {/* SUBHEAD */}
           <p className="text-lg md:text-2xl text-[var(--color-text-muted)] max-w-2xl mx-auto font-light leading-relaxed">
-            Just an indecisively decisive guy trying to become lucid in this{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
-              liminal dreamworld
-            </span>
-            .
+            Just an indecisively decisive guy trying to become
+            <br />
+            lucid in this <WavyLink href="/blog" text="liminal dreamworld" />.
           </p>
 
           <div className="flex flex-wrap justify-center gap-6 pt-8">
@@ -58,7 +78,6 @@ export default function Home() {
               href="/actor#audiobooks"
               className="relative group overflow-hidden rounded-full px-10 py-4 font-black uppercase tracking-wider text-white shadow-xl shadow-teal-500/20 transition-all duration-300 hover:shadow-teal-500/50 hover:-translate-y-1 hover:scale-105"
             >
-              {/* Animated Gradient Background */}
               <div className="absolute inset-0 bg-gradient-to-r from-teal-600 via-teal-400 to-teal-600 bg-[length:200%_auto] transition-all duration-500 group-hover:bg-right"></div>
               <span className="relative z-10">Audiobook Actor</span>
             </Link>
@@ -71,7 +90,6 @@ export default function Home() {
               <span className="relative z-10 transition-colors duration-300 group-hover:text-teal-600">
                 See Projects
               </span>
-              {/* Subtle sweep effect on hover */}
               <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full"></div>
             </Link>
           </div>
@@ -81,7 +99,7 @@ export default function Home() {
         <section className="space-y-12 w-full pt-4">
           <div className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-[var(--color-text-muted)]/20 pb-6">
             <div>
-              <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight">
+              <h2 className="text-3xl md:text-5xl font-light uppercase tracking-tight">
                 Latest{" "}
                 <span className="text-[var(--color-primary)]">Insights</span>
               </h2>
@@ -124,26 +142,13 @@ export default function Home() {
         </section>
       </div>
 
-      {/* GLOBAL STYLES FOR ANIMATIONS */}
+      {/* Global Style for the Card Snake Border */}
       <style jsx global>{`
-        /* 1. Ticker Animation */
-        @keyframes plane-float {
-          0%,
-          100% {
-            transform: translateY(0px) rotate(0deg);
-          }
-          50% {
-            transform: translateY(-4px) rotate(-5deg);
-          }
-        }
-
-        /* 2. Snake Border Spin Animation */
         @keyframes border-spin {
           100% {
             transform: rotate(-360deg);
           }
         }
-        /* UPDATED SPEED: 1.5s for faster spin */
         .animate-border-spin {
           animation: border-spin 1.5s linear infinite;
         }
@@ -152,57 +157,7 @@ export default function Home() {
   );
 }
 
-// --- TICKER COMPONENT ---
-function GreetingTicker() {
-  const greetings = [
-    "Welcome, traveler",
-    "환영합니다, 여행자여",
-    "Benvenuto, viaggiatore",
-    "欢迎，旅行者",
-    "Bienvenido, viajero",
-  ];
-
-  const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIndex((prev) => (prev + 1) % greetings.length);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, [greetings.length]);
-
-  return (
-    <div className="flex items-center justify-center gap-4 opacity-90 mb-4 h-12">
-      <div
-        className="text-[var(--color-primary)]"
-        style={{ animation: "plane-float 3s ease-in-out infinite" }}
-      >
-        <Plane
-          size={24}
-          className="fill-[var(--color-primary)]/20 stroke-[2px]"
-        />
-      </div>
-
-      <div className="relative h-5 overflow-hidden w-64 md:w-auto text-left border-l-2 border-[var(--color-primary)]/30 pl-3">
-        <div
-          className="transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
-          style={{ transform: `translateY(-${index * 20}px)` }}
-        >
-          {greetings.map((text, i) => (
-            <div
-              key={i}
-              className="h-5 flex items-center text-sm font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)]"
-            >
-              {text}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- PIZAZZ BLOG CARD COMPONENT ---
+// --- 2. HELPER COMPONENT: BLOG CARD ---
 function BlogCard({ title, image, tag, date, href, delay }) {
   return (
     <div
@@ -210,22 +165,14 @@ function BlogCard({ title, image, tag, date, href, delay }) {
       style={{ animationDelay: `${delay}s` }}
     >
       <Link href={href} className="relative h-full block">
-        {/* 1. SNAKE CONTAINER 
-            ADDED: 'shadow-xl shadow-indigo-900/5' gives it depth when NOT hovered.
-            ON HOVER: It switches to a stronger teal glow.
-        */}
         <div className="relative h-full w-full rounded-[2rem] overflow-hidden p-[2px] transition-all duration-500 shadow-xl shadow-indigo-900/5 hover:-translate-y-2 hover:shadow-2xl hover:shadow-teal-500/20">
-          {/* 2. THE SNAKE: Brighter Teal & Faster Spin */}
           <div
             className="absolute inset-[-100%] animate-border-spin opacity-0 group-hover:opacity-100 transition-opacity duration-300"
             style={{
               background: `conic-gradient(from 0deg, transparent 0 300deg, #2dd4bf 360deg)`,
             }}
           />
-
-          {/* 3. INNER CARD: Solid Gradient Background */}
           <div className="relative h-full flex flex-col bg-gradient-to-br from-white via-slate-50 to-teal-50 rounded-[1.9rem] overflow-hidden border border-white/60">
-            {/* Image Section */}
             <div className="relative aspect-[4/3] w-full overflow-hidden">
               <Image
                 src={image}
@@ -239,19 +186,15 @@ function BlogCard({ title, image, tag, date, href, delay }) {
                 </span>
               </div>
             </div>
-
-            {/* Text Section */}
             <div className="relative p-6 flex flex-col flex-grow justify-between gap-4">
               <h3 className="text-xl md:text-2xl font-bold leading-tight text-slate-900 transition-colors duration-300 group-hover:text-teal-800 line-clamp-2">
                 {title}
               </h3>
-
               <div className="flex items-center justify-between pt-4 border-t border-slate-200/60 group-hover:border-teal-100/50 transition-colors">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase text-slate-500 group-hover:text-teal-700/80 transition-colors">
                   <Calendar size={14} />
                   {date}
                 </div>
-
                 <div className="w-8 h-8 rounded-full bg-slate-50/80 flex items-center justify-center group-hover:bg-white transition-colors shadow-sm">
                   <ArrowRight
                     size={14}

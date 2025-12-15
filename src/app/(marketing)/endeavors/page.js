@@ -9,7 +9,8 @@ const ENDEAVORS = [
   {
     title: "CineSonic Audiobooks",
     role: "Founder & CEO",
-    subtitle: "Stories seen in sound",
+    subtitle: "See stories in sound",
+    expanded: "100% human art",
     image: "/images/cinesonic_logo_square_gold_500x500px.png",
     href: "#", // Link disabled
     external: true,
@@ -214,7 +215,7 @@ function EndeavorCard({ item, delay }) {
                 {/* Expanded Subtitle (Shows on Hover) */}
                 <div className="h-0 group-hover:h-auto overflow-hidden transition-all duration-300 opacity-0 group-hover:opacity-100">
                   <p className="text-slate-200 font-medium text-xs mt-1 pb-1 border-t border-white/20 pt-2">
-                    {item.subtitle}
+                    {item.expanded}
                   </p>
                 </div>
                 {/* Preview Subtitle (Hides on Hover) */}

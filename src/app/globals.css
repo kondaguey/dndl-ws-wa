@@ -1,19 +1,21 @@
 @import "tailwindcss";
 
-/* =========================================
-   1. THE DESIGN TOKENS
-   ========================================= */
+/* ==========================================================================
+   1. THEME CONFIGURATION (Design Tokens)
+   ========================================================================== */
 @theme {
-  --color-primary: #0d9488;
-  --color-primary-light: #5eead4;
-  --color-primary-dark: #115e59;
-  --color-secondary: #d4a373;
+  /* --- Brand Colors --- */
+  --color-primary: #0d9488; /* Teal 600 */
+  --color-primary-light: #5eead4; /* Teal 300 */
+  --color-primary-dark: #115e59; /* Teal 800 */
+  --color-secondary: #d4a373; /* Earthy Orange */
 
-  /* --- ANIMATIONS --- */
+  /* --- Animation Tokens --- */
   --animate-fade-in: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-slide-up: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-gradient-xy: gradient-xy 3s ease infinite;
 
+  /* --- Keyframes --- */
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -43,49 +45,58 @@
   }
 }
 
-/* Light Mode (Default) */
+/* ==========================================================================
+   2. CSS VARIABLES & DARK MODE
+   ========================================================================== */
 :root {
+  /* Core Palette */
   --color-primary: #0d9488;
   --color-primary-light: #5eead4;
   --color-primary-dark: #115e59;
   --color-secondary: #d4a373;
   --color-secondary-light: #faedcd;
 
-  /* CHANGED: Darker background for eye strain */
-  --color-bg: #e2e8f0;
-  /* CHANGED: Slightly softer surface white */
-  --color-surface: #f8fafc;
+  /* Layout & Surface (Eye-strain optimized) */
+  --color-bg: #e2e8f0; /* Slate 200 */
+  --color-surface: #f8fafc; /* Slate 50 */
 
-  --color-text-main: #1f2937;
-  --color-text-muted: #4b5563; /* Darkened slightly for better contrast on darker bg */
+  /* Typography */
+  --color-text-main: #1f2937; /* Gray 800 */
+  --color-text-muted: #4b5563; /* Gray 600 */
+
+  /* Dimensions */
   --nav-height: 80px;
   --radius-lg: 1.5rem;
 }
 
-/* Dark Mode Override */
 .dark {
+  /* Dark Mode Overrides */
   --color-primary: #14b8a6;
   --color-primary-light: #2dd4bf;
   --color-primary-dark: #0f766e;
+
   --color-bg: #0f172a; /* Slate 900 */
   --color-surface: #1e293b; /* Slate 800 */
+
   --color-text-main: #f3f4f6;
   --color-text-muted: #9ca3af;
 }
 
-/* =========================================
-   2. GLOBAL RESETS
-   ========================================= */
+/* ==========================================================================
+   3. GLOBAL RESETS (Base Layer)
+   ========================================================================== */
 @layer base {
   html {
     scroll-behavior: smooth;
   }
+
   body {
     background-color: var(--color-bg);
     color: var(--color-text-main);
-    transition: background-color 0.3s ease, color 0.3s ease;
     font-family: "Nunito Sans", sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
+
   h1,
   h2,
   h3,
@@ -98,11 +109,11 @@
   }
 }
 
-/* =========================================
-   3. UTILITY COMPONENTS
-   ========================================= */
+/* ==========================================================================
+   4. COMPONENT UTILITIES
+   ========================================================================== */
 @layer components {
-  /* Glassmorphism */
+  /* --- Glassmorphism --- */
   .glass-panel {
     @apply backdrop-blur-xl border border-white/10 shadow-xl;
     background: rgba(255, 255, 255, 0.6);
@@ -112,7 +123,7 @@
     @apply border-white/5;
   }
 
-  /* Text Gradients */
+  /* --- Text Gradients --- */
   .text-gradient {
     background: linear-gradient(
       135deg,
@@ -124,10 +135,11 @@
     color: transparent;
   }
 
-  /* Buttons & Cards */
+  /* --- Buttons & Cards --- */
   .btn-primary {
     @apply relative inline-flex items-center justify-center px-8 py-4 font-black uppercase tracking-wider text-white transition-all duration-300 overflow-hidden rounded-full bg-[var(--color-text-main)];
   }
+
   .card-modern {
     @apply relative overflow-hidden transition-all duration-500 ease-out bg-[var(--color-surface)];
     border-radius: var(--radius-lg);
@@ -135,7 +147,113 @@
     border: 1px solid rgba(0, 0, 0, 0.05);
   }
 
-  /* --- MAIL ANIMATION (Contact Form) --- */
+  /* --- Blog Typography System --- */
+  .blog-content {
+    color: #334155;
+    line-height: 1.8;
+    font-size: 1.125rem;
+  }
+  .blog-content > * + * {
+    margin-top: 1.5em;
+  }
+
+  .blog-content h2 {
+    font-size: 1.875rem;
+    font-weight: 900;
+    color: #0f172a;
+    margin-top: 3.5rem;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+  }
+  .blog-content h3 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+  }
+  .blog-content p {
+    margin-bottom: 2rem;
+  }
+
+  .blog-content ul {
+    list-style: none;
+    margin: 2rem 0;
+    padding-left: 0;
+  }
+  .blog-content li {
+    position: relative;
+    padding-left: 2rem;
+    margin-bottom: 1rem;
+  }
+  .blog-content li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 11px;
+    width: 8px;
+    height: 8px;
+    background-color: #14b8a6;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #14b8a6, 0 0 20px rgba(20, 184, 166, 0.4);
+    transition: transform 0.3s ease;
+  }
+  .blog-content li:hover::before {
+    transform: scale(1.5);
+    box-shadow: 0 0 15px #14b8a6, 0 0 30px rgba(20, 184, 166, 0.6);
+  }
+
+  .blog-content a {
+    color: #0d9488;
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-color: rgba(13, 148, 136, 0.3);
+    text-underline-offset: 4px;
+    transition: all 0.2s;
+  }
+  .blog-content a:hover {
+    background-color: #ccfbf1;
+    color: #0f766e;
+    text-decoration-color: #0f766e;
+  }
+
+  .blog-content blockquote {
+    border-left: 4px solid #14b8a6;
+    background: #f0fdfa;
+    padding: 1.5rem 2rem;
+    border-radius: 0 1rem 1rem 0;
+    font-style: italic;
+    color: #475569;
+    margin: 2.5rem 0;
+  }
+
+  .blog-content figure {
+    margin: 3rem 0;
+    width: 100%;
+  }
+  .blog-content img {
+    border-radius: 1rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    height: auto;
+  }
+  .blog-content figcaption {
+    text-align: center;
+    font-size: 0.875rem;
+    color: #94a3b8;
+    margin-top: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+}
+
+/* ==========================================================================
+   5. COMPLEX ANIMATIONS
+   ========================================================================== */
+@layer components {
+  /* --- 5.1 Mail/Contact Animation --- */
   .letter-image {
     position: relative;
     width: 200px;
@@ -253,6 +371,8 @@
     background: radial-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0));
     transition: all 0.5s ease;
   }
+
+  /* Hover States for Mail */
   .letter-image:hover .animated-mail {
     transform: translate(-50%, -80px);
   }
@@ -273,100 +393,62 @@
   }
 }
 
-/* =========================================
-   4. BLOG TYPOGRAPHY SYSTEM
-   ========================================= */
-.blog-content {
-  color: #334155;
-  line-height: 1.8;
-  font-size: 1.125rem;
+/* ... Keep your existing @theme and :root variables ... */
+
+/* ==========================================================================
+   6. CUSTOM ANIMATIONS
+   ========================================================================== */
+
+/* ... inside app/globals.css ... */
+
+/* 6.1 THE MULTICOLOR DREAM WAVE */
+@keyframes wavy-color-jump {
+  0%,
+  100% {
+    transform: translateY(0);
+    color: #0d9488; /* Teal */
+  }
+  25% {
+    transform: translateY(-6px); /* The Jump */
+    color: #818cf8; /* Indigo */
+  }
+  50% {
+    transform: translateY(0);
+    color: #c084fc; /* Purple */
+  }
+  75% {
+    transform: translateY(-3px); /* A smaller secondary bounce */
+    color: #2dd4bf; /* Light Teal */
+  }
 }
-.blog-content > * + * {
-  margin-top: 1.5em;
+
+.wave-char {
+  display: inline-block;
+  /* 3s = Slower speed. Infinite = Always looping. */
+  animation: wavy-color-jump 6s ease-in-out infinite;
+  will-change: transform, color;
 }
-.blog-content h2 {
-  font-size: 1.875rem;
-  font-weight: 900;
-  color: #0f172a;
-  margin-top: 3.5rem;
-  margin-bottom: 1.5rem;
-  letter-spacing: -0.025em;
-  line-height: 1.2;
+/* --- ANIMATED MAGNIFYING GLASS PULSE --- */
+@keyframes magnifying-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    /* Starts as the default text color (slate-500) */
+    color: currentColor;
+  }
+  50% {
+    /* Scales up slightly */
+    transform: scale(1.15);
+    /* Pulses your brand Teal color at the peak */
+    color: #0d9488; /* var(--color-primary) */
+  }
 }
-.blog-content h3 {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: #1e293b;
-  margin-top: 2.5rem;
-  margin-bottom: 1rem;
-}
-.blog-content p {
-  margin-bottom: 2rem;
-}
-.blog-content ul {
-  list-style: none;
-  margin: 2rem 0;
-  padding-left: 0;
-}
-.blog-content li {
-  position: relative;
-  padding-left: 2rem;
-  margin-bottom: 1rem;
-}
-.blog-content li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 11px;
-  width: 8px;
-  height: 8px;
-  background-color: #14b8a6;
-  border-radius: 50%;
-  box-shadow: 0 0 10px #14b8a6, 0 0 20px rgba(20, 184, 166, 0.4);
-  transition: transform 0.3s ease;
-}
-.blog-content li:hover::before {
-  transform: scale(1.5);
-  box-shadow: 0 0 15px #14b8a6, 0 0 30px rgba(20, 184, 166, 0.6);
-}
-.blog-content a {
-  color: #0d9488;
-  font-weight: 700;
-  text-decoration: underline;
-  text-decoration-color: rgba(13, 148, 136, 0.3);
-  text-underline-offset: 4px;
-  transition: all 0.2s;
-}
-.blog-content a:hover {
-  background-color: #ccfbf1;
-  color: #0f766e;
-  text-decoration-color: #0f766e;
-}
-.blog-content blockquote {
-  border-left: 4px solid #14b8a6;
-  background: #f0fdfa;
-  padding: 1.5rem 2rem;
-  border-radius: 0 1rem 1rem 0;
-  font-style: italic;
-  color: #475569;
-  margin: 2.5rem 0;
-}
-.blog-content figure {
-  margin: 3rem 0;
-  width: 100%;
-}
-.blog-content img {
-  border-radius: 1rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  height: auto;
-}
-.blog-content figcaption {
-  text-align: center;
-  font-size: 0.875rem;
-  color: #94a3b8;
-  margin-top: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+
+.animate-magnify {
+  /* Ensures it grows from the center */
+  transform-origin: center center;
+  /* A slow, 3-second breathing loop */
+  animation: magnifying-pulse 3s ease-in-out infinite;
+  /* Tells browser to optimize for these changes */
+  will-change: transform, color;
 }
