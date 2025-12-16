@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   1. THEME CONFIGURATION (Design Tokens)
+   1. THEME CONFIGURATION
    ========================================================================== */
 @theme {
   /* --- Brand Colors --- */
@@ -56,7 +56,7 @@
   --color-secondary: #d4a373;
   --color-secondary-light: #faedcd;
 
-  /* Layout & Surface (Eye-strain optimized) */
+  /* Surfaces */
   --color-bg: #e2e8f0; /* Slate 200 */
   --color-surface: #f8fafc; /* Slate 50 */
 
@@ -70,33 +70,28 @@
 }
 
 .dark {
-  /* Dark Mode Overrides */
   --color-primary: #14b8a6;
   --color-primary-light: #2dd4bf;
   --color-primary-dark: #0f766e;
-
-  --color-bg: #0f172a; /* Slate 900 */
-  --color-surface: #1e293b; /* Slate 800 */
-
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
   --color-text-main: #f3f4f6;
   --color-text-muted: #9ca3af;
 }
 
 /* ==========================================================================
-   3. GLOBAL RESETS (Base Layer)
+   3. GLOBAL RESETS
    ========================================================================== */
 @layer base {
   html {
     scroll-behavior: smooth;
   }
-
   body {
     background-color: var(--color-bg);
     color: var(--color-text-main);
     font-family: "Nunito Sans", sans-serif;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
-
   h1,
   h2,
   h3,
@@ -113,7 +108,7 @@
    4. COMPONENT UTILITIES
    ========================================================================== */
 @layer components {
-  /* --- Glassmorphism --- */
+  /* --- UI Elements --- */
   .glass-panel {
     @apply backdrop-blur-xl border border-white/10 shadow-xl;
     background: rgba(255, 255, 255, 0.6);
@@ -123,7 +118,6 @@
     @apply border-white/5;
   }
 
-  /* --- Text Gradients --- */
   .text-gradient {
     background: linear-gradient(
       135deg,
@@ -135,7 +129,6 @@
     color: transparent;
   }
 
-  /* --- Buttons & Cards --- */
   .btn-primary {
     @apply relative inline-flex items-center justify-center px-8 py-4 font-black uppercase tracking-wider text-white transition-all duration-300 overflow-hidden rounded-full bg-[var(--color-text-main)];
   }
@@ -147,12 +140,13 @@
     border: 1px solid rgba(0, 0, 0, 0.05);
   }
 
-  /* --- Blog Typography System --- */
+  /* --- Blog Typography System (The Dot Fix) --- */
   .blog-content {
     color: #334155;
     line-height: 1.8;
     font-size: 1.125rem;
   }
+
   .blog-content > * + * {
     margin-top: 1.5em;
   }
@@ -166,6 +160,7 @@
     letter-spacing: -0.025em;
     line-height: 1.2;
   }
+
   .blog-content h3 {
     font-size: 1.5rem;
     font-weight: 800;
@@ -173,20 +168,34 @@
     margin-top: 2.5rem;
     margin-bottom: 1rem;
   }
+
   .blog-content p {
     margin-bottom: 2rem;
   }
 
+  /* --- FIX START: Override default list styles completely --- */
   .blog-content ul {
-    list-style: none;
+    list-style: none !important; /* Force removal of bullets */
+    list-style-type: none !important;
     margin: 2rem 0;
     padding-left: 0;
   }
+
   .blog-content li {
     position: relative;
     padding-left: 2rem;
     margin-bottom: 1rem;
+    list-style: none !important;
   }
+
+  /* Double check to hide native markers */
+  .blog-content li::marker {
+    display: none;
+    content: "";
+  }
+  /* --- FIX END --- */
+
+  /* The Custom Dot */
   .blog-content li::before {
     content: "";
     position: absolute;
@@ -199,6 +208,7 @@
     box-shadow: 0 0 10px #14b8a6, 0 0 20px rgba(20, 184, 166, 0.4);
     transition: transform 0.3s ease;
   }
+
   .blog-content li:hover::before {
     transform: scale(1.5);
     box-shadow: 0 0 15px #14b8a6, 0 0 30px rgba(20, 184, 166, 0.6);
@@ -212,6 +222,7 @@
     text-underline-offset: 4px;
     transition: all 0.2s;
   }
+
   .blog-content a:hover {
     background-color: #ccfbf1;
     color: #0f766e;
@@ -232,12 +243,14 @@
     margin: 3rem 0;
     width: 100%;
   }
+
   .blog-content img {
     border-radius: 1rem;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     width: 100%;
     height: auto;
   }
+
   .blog-content figcaption {
     text-align: center;
     font-size: 0.875rem;
@@ -253,7 +266,7 @@
    5. COMPLEX ANIMATIONS
    ========================================================================== */
 @layer components {
-  /* --- 5.1 Mail/Contact Animation --- */
+  /* --- Mail Animation --- */
   .letter-image {
     position: relative;
     width: 200px;
@@ -391,64 +404,48 @@
   .letter-image:hover .shadow {
     width: 250px;
   }
-}
 
-/* ... Keep your existing @theme and :root variables ... */
+  /* --- Wavy Link Animation --- */
+  @keyframes wavy-color-jump {
+    0%,
+    100% {
+      transform: translateY(0);
+      color: #0d9488;
+    }
+    25% {
+      transform: translateY(-6px);
+      color: #818cf8;
+    }
+    50% {
+      transform: translateY(0);
+      color: #c084fc;
+    }
+    75% {
+      transform: translateY(-3px);
+      color: #2dd4bf;
+    }
+  }
+  .wave-char {
+    display: inline-block;
+    animation: wavy-color-jump 6s ease-in-out infinite;
+    will-change: transform, color;
+  }
 
-/* ==========================================================================
-   6. CUSTOM ANIMATIONS
-   ========================================================================== */
-
-/* ... inside app/globals.css ... */
-
-/* 6.1 THE MULTICOLOR DREAM WAVE */
-@keyframes wavy-color-jump {
-  0%,
-  100% {
-    transform: translateY(0);
-    color: #0d9488; /* Teal */
+  /* --- Magnifying Glass Pulse --- */
+  @keyframes magnifying-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      color: currentColor;
+    }
+    50% {
+      transform: scale(1.15);
+      color: #0d9488;
+    }
   }
-  25% {
-    transform: translateY(-6px); /* The Jump */
-    color: #818cf8; /* Indigo */
+  .animate-magnify {
+    transform-origin: center center;
+    animation: magnifying-pulse 3s ease-in-out infinite;
+    will-change: transform, color;
   }
-  50% {
-    transform: translateY(0);
-    color: #c084fc; /* Purple */
-  }
-  75% {
-    transform: translateY(-3px); /* A smaller secondary bounce */
-    color: #2dd4bf; /* Light Teal */
-  }
-}
-
-.wave-char {
-  display: inline-block;
-  /* 3s = Slower speed. Infinite = Always looping. */
-  animation: wavy-color-jump 6s ease-in-out infinite;
-  will-change: transform, color;
-}
-/* --- ANIMATED MAGNIFYING GLASS PULSE --- */
-@keyframes magnifying-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    /* Starts as the default text color (slate-500) */
-    color: currentColor;
-  }
-  50% {
-    /* Scales up slightly */
-    transform: scale(1.15);
-    /* Pulses your brand Teal color at the peak */
-    color: #0d9488; /* var(--color-primary) */
-  }
-}
-
-.animate-magnify {
-  /* Ensures it grows from the center */
-  transform-origin: center center;
-  /* A slow, 3-second breathing loop */
-  animation: magnifying-pulse 3s ease-in-out infinite;
-  /* Tells browser to optimize for these changes */
-  will-change: transform, color;
 }

@@ -22,8 +22,6 @@ export const metadata = {
   },
 };
 
-/* ... imports */
-
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
@@ -34,35 +32,40 @@ export default function RootLayout({ children }) {
           min-h-screen 
           flex flex-col 
           
-          /* --- EYE SAVER GRADIENT --- */
-          /* Changed from white/stone to cool slate greys */
-          bg-gradient-to-b from-slate-200 via-slate-300 to-slate-400
+          /* --- DREAMY GLOBAL BACKGROUND --- */
+          /* 1. Base color is Stone-50 (Warm/Creamy White) to kill the harshness */
+          /* 2. Gradient flows to soft Teal and Indigo hints */
+          bg-gradient-to-br from-stone-50 via-teal-50/30 to-indigo-50/30
           
+          /* Ensures the gradient covers the whole viewport and doesn't scroll away */
           bg-fixed
           
-          /* Dark Slate Text for Contrast */
-          text-slate-900
+          /* Dark Slate Text for crisp contrast against the dreamy background */
+          text-slate-800
           
           /* Teal Selection Highlight */
-          selection:bg-teal-600 selection:text-white
+          selection:bg-teal-200 selection:text-teal-900
         `}
         suppressHydrationWarning
       >
-        {/* ... Rest of file ... */}
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
           enableSystem={false}
         >
+          {/* Note on z-index: 
+            This container ensures content sits above the fixed background 
+            but keeps the layout flexible.
+          */}
           <div className="flex flex-col min-h-screen relative z-10">
             <Navbar />
 
-            {/* FIXED: Removed 'pt-32 md:pt-40' 
-                Now the pages (children) will go all the way to the top.
-                The pages themselves (ActorPage, etc.) must handle the top padding
-                to clear the Navbar.
+            {/* The children (Pages) are now responsible for their own top padding 
+               (e.g., pt-32) to clear the fixed Navbar. 
             */}
-            <main className="flex-grow">{children}</main>
+            <main className="flex-grow w-full max-w-[100vw] overflow-x-hidden">
+              {children}
+            </main>
 
             <Footer />
           </div>

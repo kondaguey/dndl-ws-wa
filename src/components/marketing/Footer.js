@@ -22,11 +22,11 @@ export default function Footer() {
   };
 
   return (
-    <footer className="relative w-full bg-[#111] text-[#f8f8f5] pt-10 pb-6 px-6 mt-auto rounded-t-[2rem] overflow-hidden">
+    <footer className="relative w-full bg-[#111] text-[#f8f8f5] pt-10 pb-6 px-6 mt-auto overflow-hidden">
       <div className="max-w-[1400px] mx-auto">
         {/* TOP SECTION: CALL TO ACTION (CENTERED) */}
         <div className="flex flex-col items-center text-center border-b border-gray-800 pb-10 mb-10">
-          <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-primary-light)] via-[var(--color-primary)] to-[var(--color-primary-dark)] mb-4">
+          <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-primary-light)] via-[var(--color-primary)] to-[var(--color-primary-dark)] mb-4 font-normal">
             Let's Create.
           </h2>
 
@@ -49,7 +49,7 @@ export default function Footer() {
                   text-2xl md:text-3xl
                   text-transparent bg-clip-text
                   bg-gradient-to-r from-blue-600 to-teal-400
-                  transition-transform duration-300 group-hover:scale-[1.02] pr-5
+                  transition-transform duration-300 group-hover:scale-[1.02] pr-5 font-bold
                 "
               >
                 Daniel (not Day) Lewis

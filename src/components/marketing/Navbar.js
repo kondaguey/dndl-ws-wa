@@ -2,18 +2,18 @@
 
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { Menu, X, Telescope, ArrowRight, Mic, Plane } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { Menu, X, ArrowRight, Mic, Plane } from "lucide-react";
 import { createClient } from "../../utils/supabase/client";
 
-// --- TICKER COMPONENT (Moved from Home) ---
-function GreetingTicker() {
+// --- TICKER COMPONENT ---
+function GreetingTicker({ scrolled }) {
   const greetings = [
-    "Welcome",
-    "환영합니다",
-    "Benvenuto",
-    "欢迎",
-    "Bienvenido",
+    "Welcome, traveler",
+    "환영합니다, 여행자여",
+    "Benvenuto, viaggiatore",
+    "欢迎，旅行者",
+    "Bienvenido, viajero",
   ];
 
   const [index, setIndex] = useState(0);
@@ -27,9 +27,8 @@ function GreetingTicker() {
 
   return (
     <div className="flex items-center gap-2 h-full">
-      {/* Plane Icon Animation */}
       <div
-        className="text-[var(--color-primary)] hidden xs:block"
+        className="text-[var(--color-primary)] block"
         style={{ animation: "plane-float 3s ease-in-out infinite" }}
       >
         <Plane
@@ -38,7 +37,7 @@ function GreetingTicker() {
         />
       </div>
 
-      <div className="relative h-5 overflow-hidden w-24 md:w-32 text-left border-l-2 border-[var(--color-primary)]/30 pl-2">
+      <div className="relative h-5 overflow-hidden text-left border-l-2 border-[var(--color-primary)]/30 pl-3 w-48 md:w-64 transition-colors duration-300">
         <div
           className="transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
           style={{ transform: `translateY(-${index * 20}px)` }}
@@ -46,7 +45,7 @@ function GreetingTicker() {
           {greetings.map((text, i) => (
             <div
               key={i}
-              className="h-5 flex items-center text-[10px] md:text-xs font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)]"
+              className="h-5 flex items-center font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)] text-[10px] md:text-xs whitespace-nowrap"
             >
               {text}
             </div>
@@ -68,36 +67,37 @@ function GreetingTicker() {
     </div>
   );
 }
-// --- REPLACE THE PREVIOUS SVG COMPONENT WITH THIS ---
+
+// --- ANIMATED MAGNIFYING GLASS ---
 const AnimatedMagnifyingGlass = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width="20" // Matches previous button size
+    width="20"
     height="20"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    strokeWidth="2" // Matches Lucide style
+    strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
-    // Apply the animation class here. It also accepts external classes like w-5 h-5
     className={`animate-magnify ${className || ""}`}
   >
     <circle cx="11" cy="11" r="8" />
     <path d="m21 21-4.3-4.3" />
   </svg>
 );
+
 // --- AUDIOBOOK COMPONENT ---
 const AudiobookButton = ({ mobile = false, onClick }) => (
   <Link
-    href="/schedule"
+    href="/scheduler"
     onClick={onClick}
     className={`
       relative group overflow-hidden rounded-full 
       transition-all duration-300 hover:scale-105 hover:shadow-[0_0_20px_rgba(20,184,166,0.5)]
       ${
         mobile
-          ? "w-full max-w-xs py-4 text-center mt-4"
+          ? "w-full max-w-xs py-4 text-center mt-4 flex-shrink-0 whitespace-nowrap"
           : "px-5 py-2 hidden lg:block"
       }
     `}
@@ -114,13 +114,20 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  // --- SEARCH STATE ---
+  // --- SEARCH STATE (Kept for Desktop Only) ---
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [allContent, setAllContent] = useState([]);
   const searchRef = useRef(null);
   const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setIsOpen(false);
+    setIsSearchOpen(false);
+    setQuery("");
+  }, [pathname]);
 
   useEffect(() => {
     if (isOpen) {
@@ -198,10 +205,6 @@ export default function Navbar() {
     e.preventDefault();
     if (results.length > 0) {
       router.push(results[0].slug);
-      setQuery("");
-      setResults([]);
-      setIsSearchOpen(false);
-      setIsOpen(false); // Close mobile menu if open
     }
   };
 
@@ -226,7 +229,7 @@ export default function Navbar() {
             md:bg-transparent md:border-transparent md:shadow-none
             ${
               scrolled
-                ? "md:w-[90%] lg:w-[85%] md:px-8 md:py-3 md:rounded-full md:shadow-2xl md:shadow-teal-900/10 md:backdrop-blur-3xl md:border md:border-white/50 md:bg-gradient-to-br md:from-white/90 md:via-teal-50/80 md:to-teal-200/60"
+                ? "md:px-8 md:py-3 md:rounded-full md:shadow-2xl md:shadow-teal-900/10 md:backdrop-blur-3xl md:border md:border-white/50 md:bg-gradient-to-br md:from-white/90 md:via-teal-50/80 md:to-teal-200/60"
                 : "md:w-full md:max-w-[1400px] md:px-12 md:py-4"
             }
           `}
@@ -237,7 +240,7 @@ export default function Navbar() {
               <h1
                 className="
                 font-black tracking-tighter leading-none
-                text-lg md:text-2xl lg:text-3xl
+                text-lg md:text-xl lg:text-2xl
                 text-transparent bg-clip-text
                 bg-gradient-to-r from-blue-500 to-teal-400
                 transition-transform duration-300 group-hover:scale-[1.02] font-medium
@@ -250,14 +253,14 @@ export default function Navbar() {
               </h1>
             </Link>
 
-            {/* TICKER: VISIBLE ON BOTH MOBILE AND DESKTOP */}
-            <GreetingTicker />
+            {/* TICKER */}
+            <GreetingTicker scrolled={scrolled} />
           </div>
 
           {/* --- RIGHT: NAV ITEMS --- */}
-          <div className="flex items-center gap-3 md:gap-5">
+          <div className="flex items-center gap-3 md:gap-5 flex-shrink-0 whitespace-nowrap">
             {/* DESKTOP LINKS */}
-            <nav className="hidden md:flex items-center gap-4 xl:gap-6">
+            <nav className="hidden md:flex items-center gap-4 lg:gap-6 xl:gap-8">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
@@ -274,7 +277,7 @@ export default function Navbar() {
 
             <div className="hidden md:block h-5 w-[1px] bg-slate-400/20"></div>
 
-            {/* DESKTOP SEARCH BAR (Hidden on Mobile) */}
+            {/* DESKTOP SEARCH BAR */}
             <div ref={searchRef} className="relative z-50 hidden md:block">
               <form
                 onSubmit={handleSearchSubmit}
@@ -301,7 +304,7 @@ export default function Navbar() {
                   }}
                   onFocus={() => setIsSearchOpen(true)}
                   placeholder="SEARCH"
-                  className={`bg-transparent text-xs font-bold uppercase tracking-wider outline-none placeholder:text-slate-400 transition-all duration-300 
+                  className={`bg-transparent text-base md:text-xs font-bold uppercase tracking-wider outline-none placeholder:text-slate-400 transition-all duration-300 
                     ${
                       isSearchOpen
                         ? "w-32 md:w-40 opacity-100 text-slate-800 pl-1"
@@ -366,7 +369,7 @@ export default function Navbar() {
             {/* DESKTOP AUDIOBOOK BUTTON */}
             <AudiobookButton onClick={() => setIsOpen(false)} />
 
-            {/* MOBILE HAMBURGER (Search Removed from Top Bar) */}
+            {/* MOBILE HAMBURGER */}
             <button
               className="md:hidden p-2 text-slate-800"
               onClick={() => setIsOpen(true)}
@@ -387,7 +390,6 @@ export default function Navbar() {
         }`}
       >
         <div className="w-full h-full overflow-y-auto flex flex-col items-center pt-24 pb-12 px-6 gap-8">
-          {/* MOBILE EXIT BUTTON */}
           <button
             onClick={() => setIsOpen(false)}
             className="absolute top-6 right-6 group p-3 rounded-full bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-teal-100 transition-all duration-300 z-50"
@@ -398,73 +400,18 @@ export default function Navbar() {
             />
           </button>
 
-          {/* MOBILE SEARCH BAR (NEW LOCATION) */}
-          <div className="w-full max-w-xs relative">
-            <div className="flex items-center gap-2 bg-slate-100/50 rounded-full px-4 py-3 border border-slate-200 focus-within:border-teal-400 focus-within:bg-white transition-all">
-              <AnimatedMagnifyingGlass size={20} className="text-slate-400" />
-              <input
-                type="text"
-                placeholder="SEARCH SITE..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="bg-transparent w-full text-sm font-bold uppercase tracking-wide outline-none text-slate-800 placeholder:text-slate-400"
-              />
-              {query && (
-                <button onClick={() => setQuery("")}>
-                  <X size={16} className="text-slate-400" />
-                </button>
-              )}
-            </div>
+          {/* SEARCH REMOVED AS REQUESTED */}
 
-            {/* Mobile Search Results */}
-            {query && (
-              <div className="mt-4 w-full rounded-xl border border-gray-100 bg-white shadow-xl overflow-hidden flex flex-col max-h-[40vh] overflow-y-auto">
-                {results.length > 0 ? (
-                  results.map((item) => (
-                    <Link
-                      key={item.slug}
-                      href={item.slug}
-                      onClick={() => {
-                        setQuery("");
-                        setIsOpen(false);
-                      }}
-                      className="p-4 border-b border-gray-50 hover:bg-teal-50 flex justify-between items-center group text-left"
-                    >
-                      <div className="flex flex-col">
-                        <span className="font-bold text-sm text-slate-700">
-                          {item.title}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                          {item.tag}
-                        </span>
-                      </div>
-                      <ArrowRight size={14} className="text-teal-400" />
-                    </Link>
-                  ))
-                ) : (
-                  <div className="p-4 text-xs font-bold text-gray-400 text-center uppercase">
-                    No results found
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="w-16 h-[1px] bg-slate-200"></div>
-
-          {/* LINKS */}
           {navLinks.map((link) => (
             <Link
               key={link.name}
               href={link.href}
-              onClick={() => setIsOpen(false)}
               className="text-3xl font-black uppercase tracking-tighter text-slate-900 hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-teal-400 hover:to-indigo-500 transition-all"
             >
               {link.name}
             </Link>
           ))}
 
-          {/* MOBILE AUDIOBOOK BUTTON */}
           <AudiobookButton mobile={true} onClick={() => setIsOpen(false)} />
         </div>
       </div>
