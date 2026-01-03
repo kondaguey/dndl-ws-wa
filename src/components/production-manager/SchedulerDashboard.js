@@ -48,6 +48,15 @@ const parseLocalDate = (dateString) => {
   }
 };
 
+// --- HELPER: Format Date to YYYY-MM-DD for Inputs ---
+const formatDateForInput = (date) => {
+  if (!date) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export default function SchedulerDashboard() {
   const [activeTab, setActiveTab] = useState("calendar");
   const [loading, setLoading] = useState(false);
@@ -78,6 +87,8 @@ export default function SchedulerDashboard() {
     notes: "",
     duration: 1,
     reason: "Personal",
+    startDate: "", // NEW
+    endDate: "", // NEW
   });
 
   // Ghost Settings
@@ -249,6 +260,8 @@ export default function SchedulerDashboard() {
   // =========================================================================
   const openAddModal = (date) => {
     setSelectedDate(date);
+    const dateStr = formatDateForInput(date);
+
     setNewItemData({
       title: "",
       client: "",
@@ -258,20 +271,26 @@ export default function SchedulerDashboard() {
       style: "Solo",
       genre: "Fiction",
       notes: "",
-      duration: 1,
+      duration: 1, // keeping for fallback/compat
       reason: "Personal",
+      startDate: dateStr, // Initialize with clicked date
+      endDate: dateStr, // Initialize with clicked date
     });
     setAddModalOpen(true);
   };
 
   const handleQuickAdd = async () => {
-    if (!newItemData.duration || newItemData.duration < 1)
-      return alert("Duration needed");
+    if (!newItemData.startDate || !newItemData.endDate) {
+      return alert("Please select start and end dates");
+    }
+
     setLoading(true);
 
-    const startDate = new Date(selectedDate);
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + (parseInt(newItemData.duration) - 1));
+    // Calculate days duration for DB storage
+    const start = new Date(newItemData.startDate);
+    const end = new Date(newItemData.endDate);
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
     if (addType === "project") {
       if (!newItemData.title) {
@@ -287,10 +306,10 @@ export default function SchedulerDashboard() {
           narration_style: newItemData.style,
           genre: newItemData.genre,
           notes: newItemData.notes,
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
+          start_date: newItemData.startDate, // Use form date directly
+          end_date: newItemData.endDate, // Use form date directly
           status: "approved",
-          days_needed: newItemData.duration,
+          days_needed: diffDays,
           word_count: 0,
         },
       ]);
@@ -299,8 +318,8 @@ export default function SchedulerDashboard() {
         {
           reason: newItemData.reason,
           type: "personal",
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
+          start_date: newItemData.startDate, // Use form date directly
+          end_date: newItemData.endDate, // Use form date directly
         },
       ]);
     }
@@ -746,7 +765,6 @@ export default function SchedulerDashboard() {
             </div>
 
             <div className="space-y-4">
-              {/* --- FIXED SELECTOR TOGGLE --- */}
               <div className="flex p-1 bg-slate-100 rounded-xl mb-4">
                 <button
                   onClick={() => setAddType("project")}
@@ -768,6 +786,42 @@ export default function SchedulerDashboard() {
                 >
                   Block
                 </button>
+              </div>
+
+              {/* DATE RANGE SELECTOR (For Both Types) */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold border border-slate-200"
+                    value={newItemData.startDate}
+                    onChange={(e) =>
+                      setNewItemData({
+                        ...newItemData,
+                        startDate: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold border border-slate-200"
+                    value={newItemData.endDate}
+                    onChange={(e) =>
+                      setNewItemData({
+                        ...newItemData,
+                        endDate: e.target.value,
+                      })
+                    }
+                  />
+                </div>
               </div>
 
               {addType === "project" ? (
@@ -886,23 +940,6 @@ export default function SchedulerDashboard() {
                         <option>Multicast</option>
                       </select>
                     </div>
-                    <div>
-                      <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
-                        Days
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
-                        value={newItemData.duration}
-                        onChange={(e) =>
-                          setNewItemData({
-                            ...newItemData,
-                            duration: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
                   </div>
                   <div>
                     <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
@@ -942,23 +979,6 @@ export default function SchedulerDashboard() {
                       <option>Travel</option>
                       <option>Admin Work</option>
                     </select>
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
-                      Duration (Days)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
-                      value={newItemData.duration}
-                      onChange={(e) =>
-                        setNewItemData({
-                          ...newItemData,
-                          duration: e.target.value,
-                        })
-                      }
-                    />
                   </div>
                 </>
               )}
