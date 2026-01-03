@@ -9,7 +9,7 @@ import ResponsiveLeads from "@/src/components/production-manager/ResponsiveLeads
 import BookingRequests from "@/src/components/production-manager/BookingRequests";
 import SchedulerDashboard from "@/src/components/production-manager/SchedulerDashboard";
 import OnboardingManager from "@/src/components/production-manager/OnboardingManager";
-import Archives from "@/src/components/production-manager/Archives"; // <--- 1. IMPORT THIS
+import Archives from "@/src/components/production-manager/Archives";
 
 import {
   Inbox,
@@ -18,11 +18,7 @@ import {
   Briefcase,
   Archive,
   CheckCircle2,
-  Trash2,
   CalendarRange,
-  Headphones,
-  User,
-  Clock,
   MessageCircle,
 } from "lucide-react";
 
@@ -36,8 +32,8 @@ const TABS = [
   { id: "responsive", label: "Responsive Leads", icon: MessageCircle },
   { id: "requests", label: "Booking Requests", icon: Inbox },
   { id: "calendar", label: "Calendar Ops", icon: CalendarRange },
-  { id: "onboarding", label: "Onboarding", icon: Kanban },
-  { id: "f15", label: "First 15", icon: Headphones },
+  { id: "onboarding", label: "Onboarding & First 15", icon: Kanban }, // RENAMED
+  // F15 TAB DELETED HERE
   { id: "production", label: "Production", icon: Briefcase },
   { id: "auditions", label: "Auditions", icon: Mic2 },
   { id: "archive", label: "Archive", icon: Archive },
@@ -163,19 +159,15 @@ export default function ProductionManager() {
             <BookingRequests onUpdate={fetchAllData} />
           )}
           {activeTab === "calendar" && <SchedulerDashboard />}
+
+          {/* RENAMED TAB RENDERS HERE */}
           {activeTab === "onboarding" && <OnboardingManager />}
 
-          {/* 5. PLACEHOLDERS */}
-          {activeTab === "f15" && (
-            <div className="p-24 text-center text-slate-300 font-bold uppercase tracking-widest">
-              First 15 Module
-            </div>
-          )}
+          {/* DELETED F15 PLACEHOLDER */}
 
-          {/* 6. ARCHIVE (NOW ACTIVE) */}
           {activeTab === "archive" && <Archives />}
 
-          {/* 7. SHARED LISTS */}
+          {/* SHARED LISTS */}
           {["production", "auditions"].includes(activeTab) && (
             <div className="grid grid-cols-1 gap-4">
               {filteredBookings.length === 0 ? (

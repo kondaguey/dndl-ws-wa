@@ -6,18 +6,13 @@ import {
   Loader2,
   CheckSquare,
   Square,
-  FileSignature,
   CreditCard,
   Mail,
   BookOpen,
-  Settings,
-  FolderOpen,
-  AlertTriangle,
   User,
   Clock,
   Ban,
   Calendar,
-  Lock,
   UserPlus,
   FolderInput,
   FileEdit,
@@ -29,8 +24,11 @@ import {
   List,
   ArrowRightCircle,
   ShieldAlert,
-  CalendarDays,
-  Hash,
+  Headphones,
+  CheckCircle2,
+  RefreshCw,
+  Rocket,
+  Zap,
 } from "lucide-react";
 
 const supabase = createClient(
@@ -38,7 +36,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-// EXACT MAPPING FROM YOUR CSV
+// --- CONFIGURATION ---
 const STEPS = [
   { key: "added_to_contacts", label: "Added to Contacts", icon: UserPlus },
   { key: "backend_folder", label: "Backend Folder Copied", icon: FolderInput },
@@ -55,536 +53,572 @@ const STEPS = [
   { key: "moved_to_f15", label: "Move to F15", icon: ArrowRightCircle },
 ];
 
-export default function Onboarding() {
+const TABLE_NAME = "3_onboarding_first_15";
+
+export default function OnboardingManager() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("active"); // active | completed
+  const [subTab, setSubTab] = useState("checklist"); // 'checklist' | 'f15'
 
-  // --- MODAL STATE ---
-  const [modal, setModal] = useState({
-    isOpen: false,
-    title: "",
-    message: "",
-    type: "confirm",
-    onConfirm: null,
-  });
-
-  const closeModal = () => setModal({ ...modal, isOpen: false });
-
-  // --- FETCH DATA ---
-  // --- FETCH DATA ---
-  const fetchOnboarding = async () => {
+  // --- 1. FETCH PIPELINE ---
+  const fetchPipeline = async () => {
     setLoading(true);
-
-    const { data, error } = await supabase
-      .from("3_onboarding")
-      .select(
+    try {
+      const { data, error } = await supabase
+        .from(TABLE_NAME)
+        .select(
+          `
+          *,
+          request:2_booking_requests!inner (
+            id,
+            book_title,
+            client_name,
+            client_type,
+            cover_image_url,
+            status,
+            start_date,
+            ref_number,
+            email
+          )
         `
-        *,
-        request:2_booking_requests!inner (
-          id,
-          book_title,
-          client_name,
-          cover_image_url,
-          status,
-          start_date,
-          end_date,
-          genre,
-          word_count,
-          ref_number
         )
-      `
-      )
-      .in("request.status", ["approved", "f15_production"])
-      .order("id", { ascending: false });
+        // Fetch active pipeline items
+        .in("request.status", ["approved", "f15_production"])
+        .order("id", { ascending: false });
 
-    if (error) {
-      // Improved Logging: Prints the full error details
-      console.error(
-        "Supabase Error:",
-        error.message,
-        error.details,
-        error.hint
-      );
-    } else {
+      if (error) throw error;
       setItems(data || []);
+    } catch (error) {
+      console.error("Pipeline Sync Error:", error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
-    fetchOnboarding();
+    fetchPipeline();
   }, []);
 
-  // --- ACTIONS ---
+  // --- 2. ACTIONS: ROBUST UPDATES ---
 
-  const handleToggleStep = (item, stepKey) => {
-    const isDone = item[stepKey];
-    const label = STEPS.find((s) => s.key === stepKey)?.label;
+  // A. Fast Track (The Roster Bypass)
+  // This takes an item, marks ALL steps complete, and moves to F15 immediately.
+  const fastTrackToF15 = async (item) => {
+    const confirmMsg =
+      item.request.client_type === "Roster"
+        ? `Fast-track Roster client "${item.request.book_title}" to First 15?`
+        : `Skip Onboarding for "${item.request.book_title}" and move to F15?`;
 
-    if (stepKey === "moved_to_f15" && !isDone) {
-      setModal({
-        isOpen: true,
-        title: "Graduate to F15?",
-        message: `This will mark onboarding as complete and move "${item.request.book_title}" to the F15 Dashboard.`,
-        type: "confirm",
-        onConfirm: () => confirmMoveToF15(item),
-      });
-      return;
-    }
+    if (!confirm(confirmMsg)) return;
 
-    setModal({
-      isOpen: true,
-      title: isDone ? "Revoke Status?" : "Confirm Step",
-      message: isDone
-        ? `Uncheck "${label}"? This removes the timestamp.`
-        : `Mark "${label}" as complete?`,
-      type: isDone ? "danger" : "confirm",
-      onConfirm: () => confirmToggleStep(item, stepKey, !isDone),
-    });
-  };
-
-  const confirmMoveToF15 = async (item) => {
-    await confirmToggleStep(item, "moved_to_f15", true);
-
-    // Create F15 Record if missing
-    const { error: insertError } = await supabase
-      .from("4_first_15")
-      .insert([{ request_id: item.request.id }]);
-
-    if (insertError) console.error("Error creating F15 record:", insertError);
-
-    await supabase
-      .from("2_booking_requests")
-      .update({ status: "f15_production" })
-      .eq("id", item.request.id);
-
-    fetchOnboarding();
-  };
-
-  const confirmToggleStep = async (item, field, newValue) => {
+    // 1. Generate "All Done" Data
     const todayStr = new Date().toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
     });
 
-    const updatedDates = { ...item.step_dates } || {};
+    const completedDates = {};
+    const completedFlags = {};
 
-    if (newValue) {
-      updatedDates[field] = todayStr;
-    } else {
-      delete updatedDates[field];
+    STEPS.forEach((step) => {
+      completedFlags[step.key] = true;
+      completedDates[step.key] = todayStr;
+    });
+
+    // Merge with existing dates to preserve history if any exists
+    const finalDates = { ...item.step_dates, ...completedDates };
+
+    // 2. Optimistic UI Update (Remove from Checklist, Add to F15 essentially)
+    setItems((prev) =>
+      prev.map((i) => {
+        if (i.id === item.id) {
+          return {
+            ...i,
+            ...completedFlags,
+            step_dates: finalDates,
+            request: { ...i.request, status: "f15_production" },
+          };
+        }
+        return i;
+      })
+    );
+
+    try {
+      // 3. Update DB: Onboarding Table
+      const { error: trackerError } = await supabase
+        .from(TABLE_NAME)
+        .update({
+          ...completedFlags,
+          step_dates: finalDates,
+        })
+        .eq("id", item.id);
+
+      if (trackerError) throw trackerError;
+
+      // 4. Update DB: Parent Status
+      const { error: parentError } = await supabase
+        .from("2_booking_requests")
+        .update({ status: "f15_production" })
+        .eq("id", item.request.id);
+
+      if (parentError) throw parentError;
+    } catch (error) {
+      console.error("Fast Track Failed:", error);
+      alert("Sync failed. Refreshing...");
+      fetchPipeline();
+    }
+  };
+
+  // B. Standard Checkbox Toggle
+  const handleToggleStep = async (item, stepKey) => {
+    const isDone = item[stepKey];
+
+    // Special Case: The final "Move to F15" button
+    if (stepKey === "moved_to_f15" && !isDone) {
+      if (!confirm(`Graduate "${item.request.book_title}" to First 15?`))
+        return;
+
+      // Execute the move
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === item.id
+            ? { ...i, request: { ...i.request, status: "f15_production" } }
+            : i
+        )
+      );
+
+      await supabase
+        .from("2_booking_requests")
+        .update({ status: "f15_production" })
+        .eq("id", item.request.id);
+
+      // Also mark the specific step as done in background
+      await supabase
+        .from(TABLE_NAME)
+        .update({ [stepKey]: true })
+        .eq("id", item.id);
+
+      return;
     }
 
+    // Normal Toggle Logic
+    const todayStr = new Date().toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+
+    const updatedDates = { ...item.step_dates };
+    if (!isDone) updatedDates[stepKey] = todayStr;
+    else delete updatedDates[stepKey];
+
+    // Optimistic Update
     setItems((prev) =>
       prev.map((i) =>
         i.id === item.id
-          ? { ...i, [field]: newValue, step_dates: updatedDates }
+          ? { ...i, [stepKey]: !isDone, step_dates: updatedDates }
           : i
       )
     );
-    closeModal();
 
     await supabase
-      .from("3_onboarding")
-      .update({
-        [field]: newValue,
-        step_dates: updatedDates,
-      })
+      .from(TABLE_NAME)
+      .update({ [stepKey]: !isDone, step_dates: updatedDates })
       .eq("id", item.id);
   };
 
-  const updateStrikes = async (itemId, currentCount, change) => {
-    let newCount = Math.min(Math.max(0, currentCount + change), 3);
+  // C. Update Project Status (Postpone/Reject)
+  const updateStatus = async (item, newStatus) => {
+    if (!confirm(`Move "${item.request.book_title}" to ${newStatus}?`)) return;
+
+    // Optimistic Remove
+    setItems((prev) => prev.filter((i) => i.id !== item.id));
+
+    await supabase
+      .from("2_booking_requests")
+      .update({ status: newStatus })
+      .eq("id", item.request.id);
+
+    // If rejecting, clean up the tracker row to keep DB clean
+    if (newStatus === "rejected") {
+      await supabase.from(TABLE_NAME).delete().eq("id", item.id);
+    }
+  };
+
+  // D. First 15 Data Handling
+  const updateF15Date = async (item, field, value) => {
+    const updatedDates = { ...item.step_dates, [field]: value };
     setItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, strike_count: newCount } : item
+      prev.map((i) =>
+        i.id === item.id ? { ...i, step_dates: updatedDates } : i
       )
     );
     await supabase
-      .from("3_onboarding")
-      .update({ strike_count: newCount })
-      .eq("id", itemId);
+      .from(TABLE_NAME)
+      .update({ step_dates: updatedDates })
+      .eq("id", item.id);
   };
 
-  const updateProjectStatus = (item, newStatus) => {
-    const actionLabel = newStatus === "postponed" ? "Postpone" : "Boot";
+  const approveF15 = async (item) => {
+    if (!confirm(`Approve F15 for "${item.request.book_title}"?`)) return;
 
-    setModal({
-      isOpen: true,
-      title: `${actionLabel} Project?`,
-      message: `Move "${item.request.book_title}" to ${
-        newStatus === "boot" ? "Rejected" : "Postponed"
-      }?`,
-      type: "danger",
-      onConfirm: async () => {
-        setItems((prev) => prev.filter((i) => i.id !== item.id));
-        closeModal();
-        const statusKey = newStatus === "boot" ? "rejected" : "postponed";
-        await supabase
-          .from("2_booking_requests")
-          .update({ status: statusKey })
-          .eq("id", item.request.id);
-      },
-    });
+    setItems((prev) => prev.filter((i) => i.id !== item.id));
+
+    await supabase
+      .from("2_booking_requests")
+      .update({ status: "production" })
+      .eq("id", item.request.id);
   };
 
-  const calculateProgress = (item) => {
-    const completed = STEPS.filter((step) => item[step.key]).length;
-    return Math.round((completed / STEPS.length) * 100);
-  };
+  // --- 3. FILTER & RENDER ---
+  const onboardingItems = items.filter((i) => i.request.status === "approved");
+  const f15Items = items.filter((i) => i.request.status === "f15_production");
 
-  const displayedItems = items.filter((item) => {
-    if (tab === "active") return item.request.status === "approved";
-    if (tab === "completed") return item.request.status === "f15_production";
-    return false;
-  });
+  const displayedItems = subTab === "checklist" ? onboardingItems : f15Items;
 
   if (loading)
     return (
       <div className="flex flex-col items-center justify-center h-64 text-slate-400 font-bold uppercase tracking-widest gap-4 animate-pulse">
         <Loader2 className="animate-spin" size={32} />
-        Loading Pipeline...
+        Syncing Pipeline...
       </div>
     );
 
   return (
-    <div className="relative w-full lg:w-[80%] mx-auto">
-      {/* --- CUSTOM MODAL --- */}
-      {modal.isOpen && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={closeModal}
-          />
-          <div className="relative bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-100">
-            <div className="flex items-center gap-4 mb-4">
-              <div
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                  modal.type === "danger"
-                    ? "bg-red-50 text-red-500"
-                    : "bg-slate-900 text-white"
-                }`}
-              >
-                {modal.type === "danger" ? <AlertTriangle /> : <Lock />}
-              </div>
-              <h3 className="text-lg font-black uppercase text-slate-900">
-                {modal.title}
-              </h3>
-            </div>
-            <p className="text-slate-500 font-medium mb-8 leading-relaxed text-sm">
-              {modal.message}
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={closeModal}
-                className="flex-1 py-3 bg-slate-100 rounded-xl text-slate-500 font-bold uppercase text-xs hover:bg-slate-200 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={modal.onConfirm}
-                className={`flex-1 py-3 rounded-xl text-white font-bold uppercase text-xs transition-all ${
-                  modal.type === "danger"
-                    ? "bg-red-500 hover:bg-red-600"
-                    : "bg-slate-900 hover:bg-emerald-500"
-                }`}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
+    <div className="relative w-full space-y-8">
+      {/* TABS */}
+      <div className="flex justify-center">
+        <div className="bg-white p-1 rounded-full border border-slate-200 shadow-sm flex">
+          <button
+            onClick={() => setSubTab("checklist")}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all ${
+              subTab === "checklist"
+                ? "bg-slate-900 text-white shadow-md"
+                : "text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            <BookOpen size={14} /> Onboarding ({onboardingItems.length})
+          </button>
+          <button
+            onClick={() => setSubTab("f15")}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all ${
+              subTab === "f15"
+                ? "bg-purple-600 text-white shadow-md"
+                : "text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            <Headphones size={14} /> First 15 ({f15Items.length})
+          </button>
         </div>
-      )}
-
-      {/* --- TABS --- */}
-      <div className="flex mb-8 bg-white p-1 rounded-full border border-slate-200 w-fit mx-auto shadow-sm">
-        <button
-          onClick={() => setTab("active")}
-          className={`px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all ${
-            tab === "active"
-              ? "bg-slate-900 text-white shadow-md"
-              : "text-slate-400 hover:text-slate-600"
-          }`}
-        >
-          Active Pipeline
-        </button>
-        <button
-          onClick={() => setTab("completed")}
-          className={`px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all ${
-            tab === "completed"
-              ? "bg-emerald-500 text-white shadow-md"
-              : "text-slate-400 hover:text-slate-600"
-          }`}
-        >
-          Completed Onboarding
-        </button>
       </div>
 
       {displayedItems.length === 0 ? (
         <div className="text-center py-32 bg-white/50 rounded-[2rem] border border-dashed border-slate-200">
-          <div className="flex justify-center mb-4 text-slate-300">
-            {tab === "active" ? (
-              <BookOpen size={48} />
-            ) : (
-              <FileCheck size={48} />
-            )}
-          </div>
-          <h3 className="text-slate-900 font-black uppercase tracking-wide mb-2">
-            No {tab === "active" ? "Active" : "Completed"} Onboarding
-          </h3>
+          <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">
+            No projects in {subTab === "checklist" ? "Onboarding" : "First 15"}
+          </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-8">
+        <div className="grid grid-cols-1 gap-8">
           {displayedItems.map((item) => {
-            const progress = calculateProgress(item);
-            const strikes = item.strike_count || 0;
-            let cardStyle = "bg-white border-slate-100";
-            let strikeBadge = "bg-slate-100 text-slate-400";
+            const isRoster = item.request.client_type === "Roster";
 
-            if (strikes === 1) {
-              cardStyle = "bg-amber-50/50 border-amber-200";
-              strikeBadge =
-                "bg-amber-100 text-amber-600 border border-amber-200";
-            } else if (strikes === 2) {
-              cardStyle = "bg-orange-50/50 border-orange-200";
-              strikeBadge =
-                "bg-orange-100 text-orange-600 border border-orange-200";
-            } else if (strikes === 3) {
-              cardStyle = "bg-red-50/50 border-red-200 ring-1 ring-red-200";
-              strikeBadge =
-                "bg-red-100 text-red-600 border border-red-200 animate-pulse";
-            }
-
-            if (tab === "completed")
-              cardStyle = "bg-emerald-50/30 border-emerald-100 opacity-90";
-
-            return (
-              <div
-                key={item.id}
-                className={`rounded-[2.5rem] p-8 shadow-sm border relative overflow-hidden transition-all hover:shadow-lg ${cardStyle}`}
-              >
-                {/* --- HEADER SECTION --- */}
-                <div className="flex flex-col md:flex-row gap-8 mb-8 border-b border-slate-100/50 pb-8">
-                  {/* Cover Image */}
-                  <div className="w-full md:w-32 h-44 bg-white rounded-2xl shrink-0 overflow-hidden border border-slate-200/50 shadow-sm relative mx-auto md:mx-0">
-                    {item.request.cover_image_url ? (
-                      <img
-                        src={item.request.cover_image_url}
-                        alt="Cover"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-200">
-                        <BookOpen size={32} />
-                      </div>
-                    )}
-                    {strikes >= 3 && (
-                      <div className="absolute inset-0 bg-red-500/80 flex items-center justify-center text-white backdrop-blur-[2px]">
-                        <ShieldAlert size={32} />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-grow flex flex-col justify-between">
-                    <div className="space-y-4">
-                      <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                        <div>
-                          {/* Ref & Status */}
-                          <div className="flex items-center gap-2 mb-2">
-                            {item.request.ref_number && (
-                              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-1 rounded-md flex items-center gap-1">
-                                <Hash size={10} /> {item.request.ref_number}
-                              </span>
-                            )}
-                            <div
-                              className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                                progress === 100
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : "bg-slate-900 text-white"
-                              }`}
-                            >
-                              {progress}% Complete
-                            </div>
-                          </div>
-                          <h3 className="text-3xl font-black text-slate-900 leading-tight mb-2">
-                            {item.request.book_title || "Untitled Project"}
-                          </h3>
-                          <div className="flex items-center gap-2 text-sm font-bold text-slate-500 uppercase tracking-wide">
-                            <User size={14} className="text-slate-400" />{" "}
-                            {item.request.client_name || "Unknown Client"}
-                          </div>
-                        </div>
-
-                        {/* Main Actions */}
-                        {tab === "active" && (
-                          <div className="flex gap-2 w-full md:w-auto">
-                            <button
-                              onClick={() =>
-                                updateProjectStatus(item, "postponed")
-                              }
-                              className="flex-1 md:flex-none px-4 py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:border-orange-300 hover:text-orange-500 hover:bg-orange-50 transition-all flex items-center justify-center gap-2"
-                            >
-                              <Clock size={14} /> Postpone
-                            </button>
-                            <button
-                              onClick={() => updateProjectStatus(item, "boot")}
-                              className="flex-1 md:flex-none px-4 py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center gap-2"
-                            >
-                              <Ban size={14} /> Boot
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Project Details Grid */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-50/50 rounded-2xl border border-slate-100/50">
-                        <div>
-                          <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">
-                            Start Date
-                          </span>
-                          <span className="text-xs font-bold text-slate-700">
-                            {item.request.start_date
-                              ? new Date(
-                                  item.request.start_date
-                                ).toLocaleDateString()
-                              : "-"}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">
-                            End Date
-                          </span>
-                          <span className="text-xs font-bold text-slate-700">
-                            {item.request.end_date
-                              ? new Date(
-                                  item.request.end_date
-                                ).toLocaleDateString()
-                              : "-"}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">
-                            Genre
-                          </span>
-                          <span className="text-xs font-bold text-slate-700">
-                            {item.request.genre || "-"}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">
-                            Word Count
-                          </span>
-                          <span className="text-xs font-bold text-slate-700">
-                            {item.request.word_count
-                              ? item.request.word_count.toLocaleString()
-                              : "0"}
-                          </span>
-                        </div>
-                      </div>
+            // --- SHARED HEADER ---
+            const Header = () => (
+              <div className="flex flex-col md:flex-row gap-6 border-b border-slate-100/50 pb-6 mb-6">
+                {/* Cover Image */}
+                <div className="w-20 h-28 bg-white rounded-xl shrink-0 overflow-hidden border border-slate-200/50 shadow-sm relative group">
+                  {item.request.cover_image_url ? (
+                    <img
+                      src={item.request.cover_image_url}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-200">
+                      <BookOpen size={24} />
                     </div>
-
-                    {/* Progress Bar & Strikes */}
-                    <div className="mt-6 flex flex-col md:flex-row items-center gap-4">
-                      <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden flex-grow">
-                        <div
-                          className={`h-full transition-all duration-700 ${
-                            progress === 100 ? "bg-emerald-500" : "bg-slate-900"
-                          }`}
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between w-full md:w-auto gap-4">
-                        <div
-                          className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${strikeBadge}`}
-                        >
-                          <AlertTriangle size={14} />{" "}
-                          {strikes === 3
-                            ? "PROBATION"
-                            : `${strikes} Strike${strikes !== 1 ? "s" : ""}`}
-                        </div>
-                        {tab === "active" && (
-                          <div className="flex items-center gap-1 bg-white rounded-xl p-1 border border-slate-100 shadow-sm">
-                            <button
-                              onClick={() =>
-                                updateStrikes(item.id, strikes, -1)
-                              }
-                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 font-bold transition-colors"
-                            >
-                              -
-                            </button>
-                            <button
-                              onClick={() => updateStrikes(item.id, strikes, 1)}
-                              disabled={strikes >= 3}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-red-500 font-bold disabled:opacity-30 transition-colors"
-                            >
-                              +
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                  )}
+                  {item.strike_count >= 3 && (
+                    <div className="absolute inset-0 bg-red-500/80 flex items-center justify-center text-white backdrop-blur-sm">
+                      <ShieldAlert size={24} />
                     </div>
-                  </div>
+                  )}
                 </div>
 
-                {/* --- CHECKLIST GRID --- */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {STEPS.map((step) => {
-                    const isDone = item[step.key];
-                    const dateStamp = item.step_dates?.[step.key];
-                    const Icon = step.icon;
-                    return (
-                      <button
-                        key={step.key}
-                        onClick={() => handleToggleStep(item, step.key)}
-                        disabled={tab === "completed"} // Read-only if completed
-                        className={`relative flex items-center gap-3 p-3 rounded-2xl border transition-all text-left group overflow-hidden ${
-                          isDone
-                            ? "bg-slate-900 border-slate-900 text-white shadow-md hover:shadow-lg"
-                            : "bg-white border-slate-100 text-slate-500 hover:border-slate-300 hover:bg-slate-50"
-                        } ${
-                          tab === "completed" ? "opacity-75 cursor-default" : ""
-                        }`}
-                      >
-                        <div
-                          className={`shrink-0 transition-colors ${
-                            isDone
-                              ? "text-emerald-400"
-                              : "text-slate-300 group-hover:text-slate-400"
+                {/* Details */}
+                <div className="flex-grow">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        {item.request.ref_number && (
+                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                            #{item.request.ref_number}
+                          </span>
+                        )}
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest ${
+                            isRoster
+                              ? "bg-purple-100 text-purple-700"
+                              : "bg-blue-50 text-blue-600"
                           }`}
                         >
-                          {isDone ? (
-                            <CheckSquare size={18} />
-                          ) : (
-                            <Square size={18} />
-                          )}
-                        </div>
-                        <div className="flex flex-col z-10 w-full overflow-hidden">
-                          <span
-                            className={`text-[10px] font-black uppercase tracking-wider truncate ${
-                              isDone ? "text-slate-200" : "text-slate-600"
-                            }`}
-                          >
-                            {step.label}
-                          </span>
-                          {isDone && dateStamp && (
-                            <span className="text-[9px] font-bold text-emerald-400 flex items-center gap-1 mt-0.5">
-                              <Calendar size={10} /> {dateStamp}
-                            </span>
-                          )}
-                        </div>
-                        <Icon
-                          className={`absolute -bottom-2 -right-2 w-10 h-10 opacity-5 pointer-events-none ${
-                            isDone ? "text-white" : "text-slate-900"
-                          }`}
-                        />
+                          {item.request.client_type}
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 leading-tight mb-1">
+                        {item.request.book_title}
+                      </h3>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2">
+                        <User size={12} /> {item.request.client_name}
+                      </p>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => updateStatus(item, "postponed")}
+                        className="p-2 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-orange-500 hover:border-orange-200 transition-colors"
+                        title="Postpone"
+                      >
+                        <Clock size={16} />
                       </button>
-                    );
-                  })}
+                      <button
+                        onClick={() => updateStatus(item, "rejected")}
+                        className="p-2 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors"
+                        title="Reject"
+                      >
+                        <Ban size={16} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             );
+
+            // === VIEW: ONBOARDING ===
+            if (subTab === "checklist") {
+              const completedCount = STEPS.filter((s) => item[s.key]).length;
+              const progress = Math.round(
+                (completedCount / STEPS.length) * 100
+              );
+
+              return (
+                <div
+                  key={item.id}
+                  className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 relative overflow-hidden"
+                >
+                  <Header />
+
+                  {/* ROSTER BYPASS ALERT */}
+                  {isRoster && (
+                    <div className="mb-8 p-4 bg-purple-50 rounded-2xl border border-purple-100 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-purple-100 rounded-full text-purple-600">
+                          <Zap size={18} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-purple-900 uppercase tracking-wide">
+                            Roster Client Detected
+                          </p>
+                          <p className="text-[10px] text-purple-600 font-medium">
+                            Skip manual onboarding steps?
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => fastTrackToF15(item)}
+                        className="px-5 py-2 bg-purple-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-purple-700 shadow-md flex items-center gap-2"
+                      >
+                        <Rocket size={14} /> Fast Track to F15
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Progress Bar */}
+                  <div className="w-full bg-slate-100 rounded-full h-1.5 mb-8 overflow-hidden">
+                    <div
+                      className="h-full bg-slate-900 transition-all duration-500"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+
+                  {/* Steps Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {STEPS.map((step) => {
+                      const isDone = item[step.key];
+                      const dateStamp = item.step_dates?.[step.key];
+                      const Icon = step.icon;
+
+                      return (
+                        <button
+                          key={step.key}
+                          onClick={() => handleToggleStep(item, step.key)}
+                          className={`relative flex items-center gap-3 p-3 rounded-xl border transition-all text-left group overflow-hidden ${
+                            isDone
+                              ? "bg-slate-900 border-slate-900 text-white shadow-md"
+                              : "bg-white border-slate-100 text-slate-500 hover:border-slate-300 hover:bg-slate-50"
+                          }`}
+                        >
+                          <div
+                            className={`shrink-0 transition-colors ${
+                              isDone ? "text-emerald-400" : "text-slate-300"
+                            }`}
+                          >
+                            {isDone ? (
+                              <CheckSquare size={18} />
+                            ) : (
+                              <Square size={18} />
+                            )}
+                          </div>
+                          <div className="flex flex-col z-10 w-full overflow-hidden">
+                            <span
+                              className={`text-[10px] font-black uppercase tracking-wider truncate ${
+                                isDone ? "text-slate-200" : "text-slate-600"
+                              }`}
+                            >
+                              {step.label}
+                            </span>
+                            {isDone && dateStamp && (
+                              <span className="text-[9px] font-bold text-emerald-400 flex items-center gap-1 mt-0.5">
+                                <Calendar size={10} /> {dateStamp}
+                              </span>
+                            )}
+                          </div>
+                          <Icon
+                            className={`absolute -bottom-2 -right-2 w-10 h-10 transition-opacity pointer-events-none ${
+                              isDone
+                                ? "text-white opacity-5"
+                                : "text-slate-900 opacity-0 group-hover:opacity-5"
+                            }`}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* MANUAL SKIP BUTTON (For non-roster exceptions) */}
+                  {!isRoster && (
+                    <div className="mt-6 flex justify-end">
+                      <button
+                        onClick={() => fastTrackToF15(item)}
+                        className="text-[9px] font-bold text-slate-300 uppercase tracking-widest hover:text-slate-500"
+                      >
+                        Skip all & Graduate
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // === VIEW: FIRST 15 ===
+            if (subTab === "f15") {
+              const inRevision = item.step_dates?.in_revision;
+
+              const DateInput = ({ label, field }) => (
+                <div className="p-3 rounded-xl border border-slate-200 bg-white hover:border-purple-200 transition-colors focus-within:border-purple-400 focus-within:ring-1 focus-within:ring-purple-200">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">
+                    {label}
+                  </span>
+                  <input
+                    type="date"
+                    className="w-full text-xs font-bold text-slate-700 outline-none bg-transparent"
+                    value={item.step_dates?.[field] || ""}
+                    onChange={(e) => updateF15Date(item, field, e.target.value)}
+                  />
+                </div>
+              );
+
+              return (
+                <div
+                  key={item.id}
+                  className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 relative overflow-hidden"
+                >
+                  <div
+                    className={`absolute top-0 left-0 right-0 h-1 ${
+                      inRevision ? "bg-orange-400" : "bg-purple-500"
+                    }`}
+                  />
+                  <Header />
+
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    {/* PHASE 1: KICKOFF */}
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-900 mb-2 flex items-center gap-2">
+                        <span className="w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center text-[9px]">
+                          1
+                        </span>{" "}
+                        Kickoff
+                      </h4>
+                      <DateInput
+                        label="Breakdown Rcvd"
+                        field="f15_breakdown_rcvd"
+                      />
+                      <DateInput
+                        label="Internal Due Date"
+                        field="f15_due_internal"
+                      />
+                      <DateInput label="Sent to Client" field="f15_sent" />
+                    </div>
+
+                    {/* PHASE 2: REVIEW */}
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-purple-700 mb-2 flex items-center gap-2">
+                        <span className="w-4 h-4 rounded-full bg-purple-100 flex items-center justify-center text-[9px]">
+                          2
+                        </span>{" "}
+                        Client Review
+                      </h4>
+                      <DateInput label="Approval Due" field="f15_client_due" />
+                      <DateInput
+                        label="Feedback Rcvd"
+                        field="f15_feedback_rcvd"
+                      />
+                    </div>
+
+                    {/* PHASE 3: REVISION */}
+                    <div
+                      className={`space-y-3 transition-all ${
+                        inRevision ? "opacity-100" : "opacity-40 grayscale"
+                      }`}
+                    >
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-2 flex items-center gap-2">
+                        <span className="w-4 h-4 rounded-full bg-orange-100 flex items-center justify-center text-[9px]">
+                          3
+                        </span>{" "}
+                        Revision
+                      </h4>
+                      <DateInput label="R2 Due (Int)" field="f15_r2_due" />
+                      <DateInput label="R2 Sent" field="f15_r2_sent" />
+                    </div>
+
+                    {/* ACTIONS */}
+                    <div className="flex flex-col gap-3 justify-end">
+                      <button
+                        onClick={() => {
+                          const isRev = !inRevision;
+                          updateF15Date(item, "in_revision", isRev);
+                        }}
+                        className={`w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border flex items-center justify-center gap-2 transition-all ${
+                          inRevision
+                            ? "bg-orange-50 border-orange-200 text-orange-600"
+                            : "bg-white border-slate-200 text-slate-400 hover:border-orange-300 hover:text-orange-500"
+                        }`}
+                      >
+                        <RefreshCw size={14} />{" "}
+                        {inRevision ? "Revision Active" : "Trigger Revision"}
+                      </button>
+
+                      <button
+                        onClick={() => approveF15(item)}
+                        className="w-full py-4 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 shadow-lg hover:shadow-emerald-200 flex items-center justify-center gap-2 transition-all"
+                      >
+                        <CheckCircle2 size={16} /> Approve & Ship
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
           })}
         </div>
       )}

@@ -16,8 +16,6 @@ import {
   Pencil,
   Save,
   Ban,
-  Briefcase,
-  AlignLeft,
   Image as ImageIcon,
   UploadCloud,
   Loader2,
@@ -26,16 +24,22 @@ import {
   ThumbsDown,
   Globe,
   UserCheck,
-  Link,
   Users,
   Copy,
   ExternalLink,
+  PlayCircle,
+  AlertCircle,
+  XCircle,
 } from "lucide-react";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
+
+// --- CONFIG ---
+// The combined table from your schema
+const TRACKER_TABLE = "3_onboarding_first_15";
 
 // --- HELPERS ---
 const parseLocalDate = (dateString) => {
@@ -69,12 +73,12 @@ const cleanNumber = (value) => {
 };
 
 const TABS = [
-  { id: "pending", label: "Pending", color: "slate" },
-  { id: "approved", label: "In Production", color: "emerald" }, // Holds 'approved', 'f15_production', 'production'
-  { id: "postponed", label: "Postponed", color: "orange" },
-  { id: "completed", label: "Completed", color: "blue" },
-  { id: "rejected", label: "Rejected", color: "red" },
-  { id: "archived", label: "Archive (Legacy)", color: "gray" },
+  { id: "pending", label: "Pending" },
+  { id: "approved", label: "In Production" },
+  { id: "postponed", label: "Postponed" },
+  { id: "completed", label: "Completed" },
+  { id: "rejected", label: "Rejected" },
+  { id: "archived", label: "Archive" },
 ];
 
 export default function BookingRequests({ onUpdate }) {
@@ -87,7 +91,35 @@ export default function BookingRequests({ onUpdate }) {
   const [editForm, setEditForm] = useState({});
   const [uploading, setUploading] = useState(false);
 
-  // Fetch ALL items
+  // UI NOTIFICATIONS
+  const [toast, setToast] = useState({
+    show: false,
+    message: "",
+    type: "success",
+  });
+  const [modal, setModal] = useState({
+    show: false,
+    title: "",
+    message: "",
+    action: null,
+  });
+
+  // --- TOAST HELPER ---
+  const showToast = (message, type = "success") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ ...toast, show: false }), 3000);
+  };
+
+  // --- MODAL HELPER ---
+  const triggerConfirm = (title, message, action) => {
+    setModal({ show: true, title, message, action });
+  };
+
+  const closeModal = () => {
+    setModal({ show: false, title: "", message: "", action: null });
+  };
+
+  // --- FETCH ---
   const fetchRequests = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -95,8 +127,12 @@ export default function BookingRequests({ onUpdate }) {
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (error) console.error("Error fetching requests:", error);
-    else setAllRequests(data || []);
+    if (error) {
+      console.error("Error fetching requests:", error);
+      showToast("Sync failed", "error");
+    } else {
+      setAllRequests(data || []);
+    }
     setLoading(false);
   };
 
@@ -104,93 +140,147 @@ export default function BookingRequests({ onUpdate }) {
     fetchRequests();
   }, []);
 
-  // --- ACTIONS ---
-  const updateStatus = async (item, newStatus) => {
-    // 1. Confirmations
-    if (newStatus === "rejected" && !confirm("Reject this request?")) return;
-    if (newStatus === "completed" && !confirm("Mark as fully completed?"))
-      return;
-    if (
-      newStatus === "pending" &&
-      !confirm("Restart project? This wipes Onboarding/F15.")
-    )
-      return;
+  // =========================================================================
+  // CORE LOGIC: UNIFIED ROUTING (FIXED SCHEMA)
+  // =========================================================================
 
-    // 2. Logic: Determine "Roster" vs "Direct"
-    // CRITICAL: Checks the edit form if open, otherwise the item itself
-    const isEditing = editingId === item.id;
-    const clientType = isEditing
-      ? editForm.client_type || "Direct"
-      : item.client_type || "Direct";
+  const handleApprove = async (item) => {
+    // 1. Determine Status based on Client Type
+    const isRoster = item.client_type === "Roster";
+    const targetStatus = isRoster ? "f15_production" : "approved";
 
-    let dbStatus = newStatus;
-    if (newStatus === "approved") {
-      dbStatus = clientType === "Roster" ? "f15_production" : "approved";
+    triggerConfirm(
+      `Approve "${item.book_title}"?`,
+      `Client Type: ${item.client_type}\nDestination: ${
+        isRoster ? "First 15 Pipeline" : "Onboarding Checklist"
+      }`,
+      async () => {
+        try {
+          setLoading(true);
+
+          // A. Check if tracker row exists already (e.g. if it was rejected before)
+          const { data: existing } = await supabase
+            .from(TRACKER_TABLE)
+            .select("id")
+            .eq("request_id", item.id)
+            .single();
+
+          // B. Insert only if missing
+          if (!existing) {
+            const { error: insertError } = await supabase
+              .from(TRACKER_TABLE)
+              .insert([{ request_id: item.id }]);
+            if (insertError) throw insertError;
+          }
+
+          // C. Update Request Status in Parent Table
+          const { error: updateError } = await supabase
+            .from("2_booking_requests")
+            .update({ status: targetStatus })
+            .eq("id", item.id);
+
+          if (updateError) throw updateError;
+
+          if (onUpdate) setTimeout(onUpdate, 100);
+          fetchRequests();
+          showToast(`Project moved to ${isRoster ? "First 15" : "Onboarding"}`);
+        } catch (error) {
+          showToast(error.message, "error");
+        } finally {
+          setLoading(false);
+          closeModal();
+        }
+      }
+    );
+  };
+
+  const updateGenericStatus = async (item, newStatus) => {
+    const doUpdate = async () => {
+      try {
+        setLoading(true);
+        const { error } = await supabase
+          .from("2_booking_requests")
+          .update({ status: newStatus })
+          .eq("id", item.id);
+
+        if (error) throw error;
+
+        // If restarting to pending, we optionally clear the tracker row
+        // OR we keep it to preserve history. Let's keep it for safety unless you want to wipe it.
+        // For now, we just move the card back.
+
+        if (onUpdate) setTimeout(onUpdate, 100);
+        fetchRequests();
+        showToast(`Project marked as ${newStatus}`);
+      } catch (error) {
+        showToast(error.message, "error");
+      } finally {
+        setLoading(false);
+        closeModal();
+      }
+    };
+
+    if (newStatus === "rejected") {
+      triggerConfirm(
+        "Reject Request?",
+        "This will move the project to the Rejected tab.",
+        doUpdate
+      );
+    } else if (newStatus === "pending") {
+      triggerConfirm(
+        "Restart Project?",
+        "This will move the project back to the Pending queue.",
+        doUpdate
+      );
+    } else {
+      doUpdate();
     }
+  };
 
-    // 3. Save Edit Form Data First (if editing)
-    if (isEditing) {
-      await saveEdits();
-    }
+  const toggleClientType = async (item) => {
+    const newType = item.client_type === "Roster" ? "Direct" : "Roster";
 
-    // 4. Update Status in DB
+    // Optimistic Update
+    setAllRequests((prev) =>
+      prev.map((r) => (r.id === item.id ? { ...r, client_type: newType } : r))
+    );
+
     const { error } = await supabase
       .from("2_booking_requests")
-      .update({ status: dbStatus, client_type: clientType }) // Ensure client_type is locked in
+      .update({ client_type: newType })
       .eq("id", item.id);
 
     if (error) {
-      alert("Error updating status");
-      return;
+      showToast("Failed to update client type", "error");
+      fetchRequests(); // Revert
+    } else {
+      showToast(`Switched to ${newType}`);
     }
-
-    // 5. Handle Side Effects (The Fork)
-    if (newStatus === "approved") {
-      if (clientType === "Roster") {
-        // Roster -> Create F15 Record
-        const { data: exists } = await supabase
-          .from("4_first_15")
-          .select("id")
-          .eq("request_id", item.id)
-          .single();
-        if (!exists) {
-          await supabase.from("4_first_15").insert([{ request_id: item.id }]);
-        }
-      } else {
-        // Direct -> Create Onboarding Record
-        const { data: exists } = await supabase
-          .from("3_onboarding")
-          .select("id")
-          .eq("request_id", item.id)
-          .single();
-        if (!exists) {
-          await supabase.from("3_onboarding").insert([{ request_id: item.id }]);
-        }
-      }
-    } else if (newStatus === "pending") {
-      // Restart -> Delete downstream records
-      await supabase.from("3_onboarding").delete().eq("request_id", item.id);
-      await supabase.from("4_first_15").delete().eq("request_id", item.id);
-    }
-
-    // 6. Refresh UI
-    if (onUpdate) setTimeout(onUpdate, 100);
-    fetchRequests();
   };
 
+  // =========================================================================
+  // UTILS & UI HELPERS
+  // =========================================================================
+
   const deleteRequest = async (id) => {
-    if (!confirm("Move this project to the Trash?")) return;
-    setAllRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: "deleted" } : r))
+    triggerConfirm(
+      "Delete Permanently?",
+      "This action cannot be undone.",
+      async () => {
+        const { error } = await supabase
+          .from("2_booking_requests")
+          .update({ status: "deleted" }) // Soft delete based on your status list
+          .eq("id", id);
+
+        if (!error) {
+          fetchRequests();
+          showToast("Project deleted");
+        } else {
+          showToast("Delete failed", "error");
+        }
+        closeModal();
+      }
     );
-    const { error } = await supabase
-      .from("2_booking_requests")
-      .update({ status: "deleted" })
-      .eq("id", id);
-    if (error) {
-      console.error("Error soft deleting:", error);
-      fetchRequests();
-    } else if (onUpdate) setTimeout(onUpdate, 100);
   };
 
   const handleImageUpload = async (e) => {
@@ -211,9 +301,10 @@ export default function BookingRequests({ onUpdate }) {
         .from("book-covers")
         .getPublicUrl(filePath);
       setEditForm((prev) => ({ ...prev, cover_image_url: data.publicUrl }));
+      showToast("Cover uploaded");
     } catch (error) {
       console.error("Error uploading image:", error);
-      alert("Error uploading image");
+      showToast("Upload failed", "error");
     } finally {
       setUploading(false);
     }
@@ -233,7 +324,6 @@ export default function BookingRequests({ onUpdate }) {
   };
 
   const saveEdits = async () => {
-    const sanitizedWordCount = cleanNumber(editForm.word_count_display);
     const updates = {
       book_title: editForm.book_title,
       client_name: editForm.client_name,
@@ -243,7 +333,7 @@ export default function BookingRequests({ onUpdate }) {
       email_thread_link: editForm.email_thread_link,
       client_type: editForm.client_type,
       genre: editForm.genre,
-      word_count: sanitizedWordCount,
+      word_count: cleanNumber(editForm.word_count_display),
       narration_style: editForm.narration_style,
       notes: editForm.notes,
       start_date: editForm.startStr,
@@ -254,37 +344,28 @@ export default function BookingRequests({ onUpdate }) {
     setAllRequests((prev) =>
       prev.map((r) => (r.id === editingId ? { ...r, ...updates } : r))
     );
+
     const { error } = await supabase
       .from("2_booking_requests")
       .update(updates)
       .eq("id", editingId);
-    if (!error) {
-      setEditingId(null);
-    } else {
-      console.error("Save failed:", error);
-      alert(`Failed to save: ${error.message}`);
+
+    if (error) {
+      showToast("Save failed", "error");
       fetchRequests();
+    } else {
+      showToast("Changes saved");
     }
-  };
-
-  const handleWordCountChange = (e) => {
-    const val = e.target.value.replace(/[^0-9,]/g, "");
-    const raw = val.replace(/,/g, "");
-    const formatted = formatNumberWithCommas(raw);
-    setEditForm({ ...editForm, word_count_display: formatted });
-  };
-
-  const cancelEditing = () => {
     setEditingId(null);
-    setEditForm({});
   };
+
   const copyToClipboard = (text) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
-    alert(`Copied: ${text}`);
+    showToast("Copied to clipboard");
   };
 
-  // --- FILTER LOGIC ---
+  // --- FILTER ---
   const getCount = (tabId) => {
     return allRequests.filter((r) => {
       if (tabId === "approved")
@@ -300,7 +381,59 @@ export default function BookingRequests({ onUpdate }) {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
+      {/* --- CUSTOM TOAST NOTIFICATION --- */}
+      <div
+        className={`fixed top-6 right-6 z-50 transition-all duration-300 transform ${
+          toast.show
+            ? "translate-y-0 opacity-100"
+            : "-translate-y-4 opacity-0 pointer-events-none"
+        }`}
+      >
+        <div
+          className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border backdrop-blur-md ${
+            toast.type === "error"
+              ? "bg-red-50/90 border-red-200 text-red-600"
+              : "bg-slate-900/90 border-slate-800 text-white"
+          }`}
+        >
+          {toast.type === "error" ? (
+            <AlertCircle size={18} />
+          ) : (
+            <CheckCircle2 size={18} />
+          )}
+          <span className="text-sm font-bold">{toast.message}</span>
+        </div>
+      </div>
+
+      {/* --- CUSTOM CONFIRM MODAL --- */}
+      {modal.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-slate-100 scale-100 animate-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-black text-slate-900 mb-2">
+              {modal.title}
+            </h3>
+            <p className="text-sm text-slate-500 font-medium mb-6 whitespace-pre-line">
+              {modal.message}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={closeModal}
+                className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={modal.action}
+                className="flex-1 py-3 bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-slate-800 shadow-lg"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TABS */}
       <div className="flex items-center justify-between bg-white p-1.5 rounded-full border border-slate-200 shadow-sm overflow-hidden">
         <div className="flex gap-1 overflow-x-auto no-scrollbar">
@@ -357,6 +490,12 @@ export default function BookingRequests({ onUpdate }) {
               ? editForm.cover_image_url
               : r.cover_image_url;
 
+            // Resolve Client Type from Row or Edit Form
+            const currentClientType = isEditing
+              ? editForm.client_type || r.client_type || "Direct"
+              : r.client_type || "Direct";
+            const isRoster = currentClientType === "Roster";
+
             // Status Styling
             let statusColor = "border-slate-200 hover:border-slate-300";
             let bgTint = "bg-white";
@@ -384,19 +523,13 @@ export default function BookingRequests({ onUpdate }) {
               statusColor = "border-slate-300";
             }
 
-            // Determine if Roster or Direct for display
-            // Use editForm.client_type if editing, otherwise r.client_type
-            const displayClientType = isEditing
-              ? editForm.client_type || r.client_type
-              : r.client_type || "Direct";
-
             return (
               <div
                 key={r.id}
                 className={`group relative rounded-[2rem] border ${statusColor} ${bgTint} shadow-sm transition-all duration-300 overflow-hidden`}
               >
                 <div className="flex flex-col lg:flex-row min-h-[180px]">
-                  {/* LEFT: COVER/DATE */}
+                  {/* --- LEFT: COVER/DATE --- */}
                   <div className="w-full lg:w-48 relative flex flex-col items-center justify-center bg-slate-100 border-b lg:border-b-0 lg:border-r border-slate-200 shrink-0 overflow-hidden">
                     {isEditing && (
                       <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
@@ -449,11 +582,11 @@ export default function BookingRequests({ onUpdate }) {
                     )}
                   </div>
 
-                  {/* MIDDLE: CONTENT */}
+                  {/* --- MIDDLE: CONTENT --- */}
                   <div className="flex-grow p-6 lg:p-8 flex flex-col justify-center">
                     {isEditing ? (
                       <div className="space-y-8 animate-in fade-in duration-300">
-                        {/* EDIT MODE INPUTS */}
+                        {/* EDIT FORM */}
                         <div className="w-full space-y-4">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                             Project Title
@@ -471,10 +604,8 @@ export default function BookingRequests({ onUpdate }) {
                             autoFocus
                           />
                         </div>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                           <div className="space-y-6">
-                            {/* CLIENT & EMAILS */}
                             <div className="space-y-2">
                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                 Client & Emails
@@ -537,7 +668,6 @@ export default function BookingRequests({ onUpdate }) {
                                 placeholder="Gmail Thread Link"
                               />
                             </div>
-                            {/* DATES */}
                             <div className="flex gap-2">
                               <input
                                 type="date"
@@ -564,7 +694,6 @@ export default function BookingRequests({ onUpdate }) {
                             </div>
                           </div>
                           <div className="space-y-6">
-                            {/* SOURCE DROPDOWN */}
                             <div>
                               <label className="text-[9px] font-bold text-slate-400 block mb-1">
                                 Source
@@ -587,11 +716,21 @@ export default function BookingRequests({ onUpdate }) {
                                 </option>
                               </select>
                             </div>
-                            {/* STATS */}
                             <input
                               className="w-full p-4 bg-slate-50 rounded-xl text-lg font-bold text-slate-900 outline-none font-mono"
                               value={editForm.word_count_display || ""}
-                              onChange={handleWordCountChange}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(
+                                  /[^0-9,]/g,
+                                  ""
+                                );
+                                const raw = val.replace(/,/g, "");
+                                const formatted = formatNumberWithCommas(raw);
+                                setEditForm({
+                                  ...editForm,
+                                  word_count_display: formatted,
+                                });
+                              }}
                               placeholder="Word Count"
                             />
                             <div className="grid grid-cols-2 gap-2">
@@ -652,29 +791,36 @@ export default function BookingRequests({ onUpdate }) {
                         </div>
                       </div>
                     ) : (
-                      // VIEW MODE
                       <>
+                        {/* VIEW MODE */}
                         <div className="flex justify-between items-start mb-6">
                           <div>
                             <h3 className="text-2xl font-black text-slate-900 leading-tight mb-2">
                               {r.book_title || "Untitled Project"}
                             </h3>
-                            <div className="flex gap-2">
-                              {r.client_type === "Roster" ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-purple-100 text-purple-700 text-[9px] font-black uppercase tracking-wider">
-                                  <Globe size={10} /> Roster (No Onboarding)
-                                </span>
+                            <button
+                              onClick={() => toggleClientType(r)}
+                              disabled={activeSubTab !== "pending"}
+                              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${
+                                isRoster
+                                  ? "bg-purple-100 border-purple-200 text-purple-700 hover:bg-purple-200"
+                                  : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"
+                              }`}
+                            >
+                              {isRoster ? (
+                                <Globe size={14} />
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-[9px] font-black uppercase tracking-wider">
-                                  <UserCheck size={10} /> Direct Client
+                                <UserCheck size={14} />
+                              )}
+                              <span className="text-[10px] font-black uppercase tracking-wider">
+                                {isRoster ? "Roster Client" : "Direct Client"}
+                              </span>
+                              {activeSubTab === "pending" && (
+                                <span className="text-[9px] opacity-50 ml-1">
+                                  (Click to Swap)
                                 </span>
                               )}
-                              {r.is_returning && (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-wider">
-                                  Returning
-                                </span>
-                              )}
-                            </div>
+                            </button>
                           </div>
                           <button
                             onClick={() => startEditing(r)}
@@ -683,6 +829,8 @@ export default function BookingRequests({ onUpdate }) {
                             <Pencil size={18} />
                           </button>
                         </div>
+
+                        {/* INFO GRID */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4 text-xs font-medium text-slate-500">
                           <div className="space-y-3">
                             <div className="flex items-center gap-3">
@@ -696,33 +844,13 @@ export default function BookingRequests({ onUpdate }) {
                             <div className="flex flex-col gap-1.5 pl-9">
                               {r.email && (
                                 <div
-                                  className="flex items-center gap-2 group/copy cursor-pointer"
+                                  className="flex items-center gap-2 cursor-pointer"
                                   onClick={() => copyToClipboard(r.email)}
                                 >
                                   <Mail size={12} className="text-slate-400" />
                                   <span className="text-slate-600">
                                     {r.email}
                                   </span>
-                                  <Copy
-                                    size={10}
-                                    className="opacity-0 group-hover/copy:opacity-100 text-slate-300"
-                                  />
-                                </div>
-                              )}
-                              {(r.email_secondary || r.email_tertiary) && (
-                                <div className="flex flex-col gap-1 text-[10px] text-slate-400">
-                                  {r.email_secondary && (
-                                    <div className="flex items-center gap-2">
-                                      <Users size={10} /> CC:{" "}
-                                      {r.email_secondary}
-                                    </div>
-                                  )}
-                                  {r.email_tertiary && (
-                                    <div className="flex items-center gap-2">
-                                      <Users size={10} /> BCC:{" "}
-                                      {r.email_tertiary}
-                                    </div>
-                                  )}
                                 </div>
                               )}
                               {r.email_thread_link && (
@@ -782,95 +910,99 @@ export default function BookingRequests({ onUpdate }) {
                     )}
                   </div>
 
-                  {/* --- RIGHT: ACTIONS --- */}
+                  {/* --- RIGHT: ACTIONS (UNIFIED BUTTON) --- */}
                   <div className="w-full lg:w-72 shrink-0 p-6 bg-white border-t lg:border-t-0 lg:border-l border-slate-100 flex flex-col gap-3 justify-center">
                     {activeSubTab === "pending" && (
                       <>
                         <button
-                          onClick={() => updateStatus(r, "approved")}
-                          className="w-full py-4 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:shadow-emerald-200 hover:shadow-lg transition-all flex items-center justify-center gap-2 group-hover:scale-[1.02]"
+                          onClick={() => handleApprove(r)}
+                          className={`w-full py-4 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all flex items-center justify-center gap-2 ${
+                            isRoster
+                              ? "bg-purple-600 text-white hover:bg-purple-700 hover:shadow-purple-200"
+                              : "bg-slate-900 text-white hover:bg-emerald-500 hover:shadow-emerald-200"
+                          }`}
                         >
-                          <Check size={16} /> Approve
+                          <PlayCircle size={16} /> Approve & Start
                         </button>
+
                         <button
-                          onClick={() => updateStatus(r, "postponed")}
+                          onClick={() => updateGenericStatus(r, "postponed")}
                           className="w-full py-4 bg-white border border-slate-200 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-orange-300 hover:text-orange-500 hover:bg-orange-50 transition-all flex items-center justify-center gap-2"
                         >
                           <Clock size={16} /> Postpone
                         </button>
                         <button
-                          onClick={() => updateStatus(r, "rejected")}
+                          onClick={() => updateGenericStatus(r, "rejected")}
                           className="w-full py-4 bg-white border border-slate-200 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center gap-2"
                         >
                           <Ban size={16} /> Reject
                         </button>
                       </>
                     )}
+
                     {activeSubTab === "postponed" && (
                       <>
                         <button
-                          onClick={() => updateStatus(r, "pending")}
+                          onClick={() => updateGenericStatus(r, "pending")}
                           className="w-full py-4 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 shadow-lg transition-all flex items-center justify-center gap-2"
                         >
                           <Undo2 size={16} /> Revive
                         </button>
                         <button
-                          onClick={() => updateStatus(r, "rejected")}
+                          onClick={() => updateGenericStatus(r, "rejected")}
                           className="w-full py-4 bg-white border border-slate-200 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center gap-2"
                         >
                           <Ban size={16} /> Reject
                         </button>
                       </>
                     )}
+
                     {activeSubTab === "approved" && (
                       <>
-                        {displayClientType === "Roster" ? (
-                          <div className="flex flex-col items-center gap-2 text-center">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                              In Production (F15)
-                            </span>
-                            <div className="text-xs text-purple-600 font-bold bg-purple-50 px-3 py-1 rounded-full">
-                              See F15 Tab
-                            </div>
+                        <div className="flex flex-col items-center gap-2 text-center">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                            Currently In:
+                          </span>
+                          <div
+                            className={`text-xs font-bold px-3 py-1 rounded-full ${
+                              isRoster
+                                ? "text-purple-600 bg-purple-50"
+                                : "text-slate-600 bg-slate-100"
+                            }`}
+                          >
+                            {isRoster ? "First 15 (Prod)" : "Onboarding"}
                           </div>
-                        ) : (
-                          <div className="flex flex-col items-center gap-2 text-center">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                              In Onboarding
-                            </span>
-                            <div className="text-xs text-slate-600 font-bold bg-slate-100 px-3 py-1 rounded-full">
-                              See Onboarding Tab
-                            </div>
-                          </div>
-                        )}
+                        </div>
                         <button
-                          onClick={() => updateStatus(r, "pending")}
+                          onClick={() => updateGenericStatus(r, "pending")}
                           className="w-full py-4 bg-white border-2 border-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-orange-300 hover:text-orange-500 hover:bg-orange-50 transition-all flex items-center justify-center gap-2 mt-2"
                         >
                           <Undo2 size={16} /> Restart
                         </button>
                       </>
                     )}
+
                     {activeSubTab === "completed" && (
                       <>
                         <button
-                          onClick={() => updateStatus(r, "approved")}
+                          onClick={() => updateGenericStatus(r, "approved")}
                           className="w-full py-4 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all flex items-center justify-center gap-2"
                         >
                           <Undo2 size={16} /> Re-Open
                         </button>
                         <button
-                          onClick={() => updateStatus(r, "archived")}
+                          onClick={() => updateGenericStatus(r, "archived")}
                           className="w-full py-4 bg-white border border-slate-200 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
                         >
                           <Archive size={16} /> Archive
                         </button>
                       </>
                     )}
+
                     {activeSubTab === "rejected" && (
                       <>
                         <button
-                          onClick={() => updateStatus(r, "pending")}
+                          onClick={() => updateGenericStatus(r, "pending")}
                           className="w-full py-4 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all flex items-center justify-center gap-2"
                         >
                           <Undo2 size={16} /> Reconsider
@@ -883,19 +1015,20 @@ export default function BookingRequests({ onUpdate }) {
                         </button>
                       </>
                     )}
+
                     {activeSubTab === "archived" && (
                       <>
                         <div className="text-[9px] font-black text-center text-slate-300 uppercase tracking-widest mb-1">
                           Sort to:
                         </div>
                         <button
-                          onClick={() => updateStatus(r, "completed")}
+                          onClick={() => updateGenericStatus(r, "completed")}
                           className="w-full py-3 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
                         >
                           <CheckCircle2 size={14} /> Completed
                         </button>
                         <button
-                          onClick={() => updateStatus(r, "rejected")}
+                          onClick={() => updateGenericStatus(r, "rejected")}
                           className="w-full py-3 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-all flex items-center justify-center gap-2"
                         >
                           <ThumbsDown size={14} /> Rejected
