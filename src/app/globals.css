@@ -110,7 +110,7 @@
     scroll-behavior: smooth;
   }
   body {
-    background-color: var(--color-bg);
+    background-color: transparent;
     color: var(--color-text-main);
     font-family: "Nunito Sans", sans-serif;
     transition: background-color 0.3s ease, color 0.3s ease;

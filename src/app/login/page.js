@@ -28,7 +28,7 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push("/admin/scheduler");
+      router.push("/admin/production-manager");
       router.refresh();
     }
   };
