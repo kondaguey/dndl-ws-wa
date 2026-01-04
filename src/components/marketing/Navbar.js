@@ -238,13 +238,10 @@ export default function Navbar() {
           <div className="flex items-center gap-4 md:gap-8">
             <Link href="/" className="relative z-50 flex items-center group">
               <h1
-                className="
-                font-black tracking-tighter leading-none
-                text-lg md:text-xl lg:text-2xl
-                text-transparent bg-clip-text
-                bg-gradient-to-r from-blue-500 to-teal-400
-                transition-transform duration-300 group-hover:scale-[1.02] font-medium
-              "
+                className="font-black tracking-tighter leading-none text-lg md:text-xl lg:text-2xl 
+  transition-transform duration-300 group-hover:scale-[1.02]
+  text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-teal-400 to-indigo-500 
+  animate-gradient-x drop-shadow-sm"
               >
                 <span className="md:hidden font-extrabold">D(nD)L</span>
                 <span className="hidden md:inline pr-1">

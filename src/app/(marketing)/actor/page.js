@@ -60,11 +60,11 @@ export default function ActorPage() {
 
           {/* TEXT CONTENT */}
           <div className="flex-1 text-left space-y-8 z-10">
-            <h1 className="text-4xl md:text-7xl font-black uppercase leading-[0.9] text-slate-900 tracking-tighter">
-              Acting <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-indigo-600">
-                Career
+            <h1 className="text-4xl md:text-7xl font-black uppercase leading-[0.9] tracking-tighter">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-500 via-indigo-500 to-purple-500 animate-gradient-x drop-shadow-sm block">
+                Acting
               </span>
+              <span className="text-slate-900 block">Career</span>
             </h1>
 
             <div className="space-y-6 text-lg text-slate-600 font-medium leading-relaxed max-w-2xl">
@@ -92,9 +92,8 @@ export default function ActorPage() {
                   "You know acting school doesn’t mean anything, right?"
                 </p>
                 <div className="mt-2 text-xs font-black uppercase tracking-widest text-teal-400">
-                  — Some really jaded and perpetually pissed off quasi-failed
-                  actor I met at a gym in West Hollywood one time (He was 70%
-                  right, tho)
+                  — Some jaded and usually pissed off semi-unknown actor who I
+                  met at my West Hollywood gym one time (He was 70% right, tho)
                 </div>
               </div>
 
@@ -111,41 +110,12 @@ export default function ActorPage() {
       </section>
 
       {/* =========================================
-          2. STATS BAR
+          2. THE PIVOT
       ========================================= */}
-      <section className="w-full max-w-[1200px] px-4 py-12 md:py-20">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-          <StatCard
-            number={100}
-            label="Audiobooks"
-            suffix="+"
-            icon={<BookOpen size={20} />}
-          />
-          <StatCard
-            number={2000}
-            label="Positive Reviews"
-            suffix="+"
-            icon={<Users size={20} />}
-          />
-          <StatCard
-            number={100000}
-            label="Listeners"
-            suffix="+"
-            icon={<Mic2 size={20} />}
-          />
-          <StatCard
-            number={300}
-            label="Generated (k)"
-            suffix="k+"
-            icon={<Gem size={20} />}
-          />
-        </div>
-      </section>
-
-      {/* =========================================
-          3. THE PIVOT
-      ========================================= */}
-      <section id="career" className="w-full max-w-[1100px] px-6 mx-auto mb-24">
+      <section
+        id="career"
+        className="w-full max-w-[1100px] pt-10 px-6 mx-auto mb-12"
+      >
         <div className="flex flex-col-reverse md:flex-row items-center gap-12 md:gap-24">
           <div className="flex-1 space-y-6 text-left">
             <div className="inline-block px-4 py-1.5 bg-indigo-50 text-indigo-900 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-indigo-100">
@@ -192,6 +162,38 @@ export default function ActorPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* =========================================
+          3. STATS BAR
+      ========================================= */}
+      <section className="w-full max-w-[1200px] px-4 py-12 md:py-20">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+          <StatCard
+            number={100}
+            label="Audiobooks"
+            suffix="+"
+            icon={<BookOpen size={20} />}
+          />
+          <StatCard
+            number={2000}
+            label="Positive Reviews"
+            suffix="+"
+            icon={<Users size={20} />}
+          />
+          <StatCard
+            number={100000}
+            label="Listeners"
+            suffix="+"
+            icon={<Mic2 size={20} />}
+          />
+          <StatCard
+            number={300}
+            label="Generated (k)"
+            suffix="k+"
+            icon={<Gem size={20} />}
+          />
         </div>
       </section>
 
@@ -442,7 +444,7 @@ function Carousel() {
       img: "/images/dndl-website-rtibw.webp",
       title: "Right There",
       subtitle: "by Jim Christ",
-      link: "https://www.amazon.com/Right-There-Black-White-Christ/dp/1958727601",
+      link: "https://www.audible.com/pd/Right-There-in-Black-and-White-Audiobook/B0FXMY6NMK?eac_link=JSXfDOmBWfUU&ref=web_search_eac_asin_1&eac_selected_type=asin&eac_selected=B0FXMY6NMK&qid=cXEr7S3LLq&eac_id=142-9941246-1525314_cXEr7S3LLq&sr=1-1",
     },
   ];
   const [current, setCurrent] = useState(0);

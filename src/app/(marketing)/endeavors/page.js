@@ -2,16 +2,23 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowUpRight, Lock, Sparkles, MoveRight, Clock } from "lucide-react";
+import {
+  ArrowUpRight,
+  Lock,
+  Sparkles,
+  MoveRight,
+  Clock,
+  Lightbulb,
+} from "lucide-react";
 
 // --- ENDEAVORS DATA ---
 const ENDEAVORS = [
   {
-    title: "CineSonic Audiobooks",
+    title: "CineSonic™",
     role: "Founder & CEO",
     subtitle: "See stories in sound",
     expanded: "100% human art",
-    image: "/images/cinesonic_logo_square_gold_500x500px.png",
+    image: "/images/cinesonic-new-logo-see-stories-in-sound.webp",
     href: "#", // Link disabled
     external: true,
     status: "Launching Soon", // <--- NEW STATUS
@@ -49,8 +56,9 @@ export default function EndeavorsPage() {
         {/* --- HEADER --- */}
         <header className="relative text-center mb-16 max-w-3xl mx-auto animate-fade-in z-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/60 backdrop-blur-xl border border-white/60 shadow-sm mb-6 hover:scale-105 transition-transform cursor-default">
+            <Lightbulb size={12} className="text-teal-500 fill-teal-500/10" />
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-              Restless, I am
+              Restless
             </span>
           </div>
 

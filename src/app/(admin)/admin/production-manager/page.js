@@ -97,13 +97,13 @@ export default function ProductionManager() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 px-6 pb-12 pt-32 md:pt-40">
+    <div className="min-h-screen bg-slate-50 px-6 pb-12 pt-8 md:pt-12">
       <div className="max-w-[1600px] mx-auto">
         {/* HEADER AREA */}
         <div className="flex flex-col gap-8 mb-8">
           <div className="flex flex-col">
-            <h1 className="text-4xl md:text-5xl font-black uppercase text-slate-900 tracking-tighter mb-2 italic">
-              Mission Control
+            <h1 className="text-3xl md:text-4xl font-black uppercase text-slate-900 tracking-tight mb-2 italic">
+              Daniel (not Day) Lewis: Audiobook Actor
             </h1>
             <p className="text-slate-500 font-medium flex items-center gap-2 text-xs uppercase tracking-widest">
               <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
