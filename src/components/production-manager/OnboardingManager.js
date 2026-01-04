@@ -10,7 +10,7 @@ import {
   BookOpen,
   User,
   Clock,
-  Ban, // Using Standard Ban Icon
+  Ban,
   Calendar,
   FolderInput,
   PenTool,
@@ -44,6 +44,7 @@ import {
   ToggleLeft,
   ToggleRight,
   Play,
+  Rocket,
 } from "lucide-react";
 
 const supabase = createClient(
@@ -141,7 +142,6 @@ const getDaysUntil = (dateStr) => {
 
 // --- COMPONENTS ---
 
-// 1. Safety Modal
 const SafetyCheckModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
   if (!isOpen) return null;
   return (
@@ -170,63 +170,39 @@ const SafetyCheckModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
   );
 };
 
-// 2. Refund Modal
 const RefundModal = ({ isOpen, onConfirm, onCancel }) => {
-  const [refundAmount, setRefundAmount] = useState(0); // 0, 50, 100
-
+  const [refundAmount, setRefundAmount] = useState(0);
   if (!isOpen) return null;
-
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-red-900/60 backdrop-blur-md animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full border border-red-100 scale-100 animate-in zoom-in-95 duration-200 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-2 bg-red-500" />
-
         <div className="flex justify-center mb-6">
           <div className="p-4 bg-red-50 rounded-full text-red-600 border border-red-100">
             <DollarSign size={32} />
           </div>
         </div>
-
         <h3 className="text-2xl font-black text-center text-slate-900 mb-2">
           Issue Refund?
         </h3>
         <p className="text-sm text-center text-slate-500 font-medium mb-8">
           Is a deposit return required for this cancellation?
         </p>
-
         <div className="grid grid-cols-3 gap-3 mb-8">
-          <button
-            onClick={() => setRefundAmount(0)}
-            className={`py-3 rounded-xl text-xs font-bold border-2 transition-all ${
-              refundAmount === 0
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-100 text-slate-400 hover:border-slate-300"
-            }`}
-          >
-            No Refund
-          </button>
-          <button
-            onClick={() => setRefundAmount(50)}
-            className={`py-3 rounded-xl text-xs font-bold border-2 transition-all ${
-              refundAmount === 50
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-100 text-slate-400 hover:border-slate-300"
-            }`}
-          >
-            50%
-          </button>
-          <button
-            onClick={() => setRefundAmount(100)}
-            className={`py-3 rounded-xl text-xs font-bold border-2 transition-all ${
-              refundAmount === 100
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-100 text-slate-400 hover:border-slate-300"
-            }`}
-          >
-            100%
-          </button>
+          {[0, 50, 100].map((amt) => (
+            <button
+              key={amt}
+              onClick={() => setRefundAmount(amt)}
+              className={`py-3 rounded-xl text-xs font-bold border-2 transition-all ${
+                refundAmount === amt
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-100 text-slate-400 hover:border-slate-300"
+              }`}
+            >
+              {amt === 0 ? "No Refund" : `${amt}%`}
+            </button>
+          ))}
         </div>
-
         <div className="flex gap-3">
           <button
             onClick={onCancel}
@@ -246,7 +222,6 @@ const RefundModal = ({ isOpen, onConfirm, onCancel }) => {
   );
 };
 
-// 3. Date Confirm Modal
 const DateConfirmModal = ({
   isOpen,
   title,
@@ -256,6 +231,8 @@ const DateConfirmModal = ({
   onCancel,
   isHolding = false,
   isProduction = false,
+  extraDates,
+  setExtraDates,
 }) => {
   if (!isOpen) return null;
   return (
@@ -292,22 +269,56 @@ const DateConfirmModal = ({
         )}
         {isProduction && (
           <p className="text-xs text-emerald-600 font-bold text-center mb-4 bg-emerald-50 py-2 rounded-lg">
-            Launching directly to Production.
+            Set initial Production Dates.
           </p>
         )}
-
         {!isHolding && !isProduction && (
           <p className="text-xs text-slate-400 font-bold uppercase tracking-wide mb-4 text-center">
             Confirm Date
           </p>
         )}
 
-        <input
-          type="date"
-          value={dateValue}
-          onChange={(e) => setDateValue(e.target.value)}
-          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-slate-900 mb-6"
-        />
+        {isProduction ? (
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Recording Start
+              </label>
+              <input
+                type="date"
+                value={extraDates?.recordingStart || ""}
+                onChange={(e) =>
+                  setExtraDates({
+                    ...extraDates,
+                    recordingStart: e.target.value,
+                  })
+                }
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Recording Due
+              </label>
+              <input
+                type="date"
+                value={extraDates?.recordingDue || ""}
+                onChange={(e) =>
+                  setExtraDates({ ...extraDates, recordingDue: e.target.value })
+                }
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+        ) : (
+          <input
+            type="date"
+            value={dateValue}
+            onChange={(e) => setDateValue(e.target.value)}
+            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-slate-900 mb-6"
+          />
+        )}
+
         <div className="flex gap-3">
           <button
             onClick={onCancel}
@@ -341,22 +352,20 @@ export default function OnboardingManager() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [subTab, setSubTab] = useState("checklist");
-
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState("newest");
-
   const [toast, setToast] = useState({
     show: false,
     message: "",
     type: "success",
   });
 
-  // Modals
   const [dateModal, setDateModal] = useState({
     isOpen: false,
     item: null,
     stepKey: null,
     date: "",
+    extraDates: {},
   });
   const [safetyModal, setSafetyModal] = useState({
     isOpen: false,
@@ -364,7 +373,6 @@ export default function OnboardingManager() {
   });
   const [refundModal, setRefundModal] = useState({ isOpen: false, item: null });
 
-  // --- HELPERS ---
   const showToast = (message, type = "success") => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ ...toast, show: false }), 3000);
@@ -376,18 +384,10 @@ export default function OnboardingManager() {
       const { data, error } = await supabase
         .from(TABLE_NAME)
         .select(
-          `
-          *,
-          request:2_booking_requests!inner (
-            id, book_title, client_name, client_type, cover_image_url, 
-            status, start_date, end_date, days_needed, ref_number, email, email_thread_link,
-            word_count, genre, narration_style, notes, is_returning
-          )
-        `
+          `*, request:2_booking_requests!inner (id, book_title, client_name, client_type, cover_image_url, status, start_date, end_date, days_needed, ref_number, email, email_thread_link, word_count, genre, narration_style, notes, is_returning)`
         )
         .in("request.status", ["approved", "f15_production", "f15_holding"])
         .order("id", { ascending: false });
-
       if (error) throw error;
       setItems(data || []);
     } catch (error) {
@@ -423,7 +423,6 @@ export default function OnboardingManager() {
     return formatDate(dateVal);
   };
 
-  // --- ADVANCED BOOKING TOGGLE ---
   const toggleAdvancedBooking = async (item) => {
     const currentStatus = item.step_dates?.is_advanced_booking || false;
     const newStatus = !currentStatus;
@@ -439,7 +438,6 @@ export default function OnboardingManager() {
       .eq("id", item.id);
   };
 
-  // --- ACTIONS ---
   const initiateStepToggle = (item, stepKey) => {
     const isDone = checkIsDone(item, stepKey);
     if (isDone) {
@@ -455,14 +453,27 @@ export default function OnboardingManager() {
       return;
     }
     const today = new Date().toISOString().split("T")[0];
-    setDateModal({ isOpen: true, item, stepKey, date: today });
+
+    // Set default recording dates based on request
+    const recStart = item.request.start_date
+      ? item.request.start_date.split("T")[0]
+      : today;
+    const recDue = item.request.end_date
+      ? item.request.end_date.split("T")[0]
+      : today;
+
+    setDateModal({
+      isOpen: true,
+      item,
+      stepKey,
+      date: today,
+      extraDates: { recordingStart: recStart, recordingDue: recDue },
+    });
   };
 
   const confirmDateStep = () => {
-    const { item, stepKey, date } = dateModal;
+    const { item, stepKey, date, extraDates } = dateModal;
     const currentSteps = subTab === "checklist" ? ONBOARDING_STEPS : F15_STEPS;
-
-    // Waterfall
     const targetIndex = currentSteps.findIndex((s) => s.key === stepKey);
     const stepsToUpdate = currentSteps.slice(0, targetIndex + 1);
     const batchUpdates = {};
@@ -477,16 +488,18 @@ export default function OnboardingManager() {
       graduateToF15(item, batchUpdates);
     } else if (stepKey === "f15_approved") {
       const isAdvanced = item.step_dates?.is_advanced_booking;
-      if (isAdvanced) {
-        graduateToHolding(item, batchUpdates);
-      } else {
-        graduateToFullProduction(item, batchUpdates, date);
-      }
+      if (isAdvanced) graduateToHolding(item, batchUpdates);
+      else graduateToFullProduction(item, batchUpdates, date, extraDates);
     } else {
       performBatchUpdate(item, batchUpdates);
     }
-
-    setDateModal({ isOpen: false, item: null, stepKey: null, date: "" });
+    setDateModal({
+      isOpen: false,
+      item: null,
+      stepKey: null,
+      date: "",
+      extraDates: {},
+    });
   };
 
   const performBatchUpdate = async (item, updatesObj) => {
@@ -550,12 +563,44 @@ export default function OnboardingManager() {
     showToast("Moved to Holding Tank");
   };
 
-  const graduateToFullProduction = async (item, batchUpdates) => {
+  const graduateToFullProduction = async (
+    item,
+    batchUpdates,
+    date,
+    extraDates
+  ) => {
     await performBatchUpdate(item, batchUpdates);
     setItems((prev) => prev.filter((i) => i.id !== item.id));
-    await supabase
+
+    // Check if Production Record Exists First (Deduplication)
+    const { data: existing } = await supabase
       .from(PRODUCTION_TABLE)
-      .insert([{ request_id: item.request.id, status: "pre_production" }]);
+      .select("id")
+      .eq("request_id", item.request.id)
+      .single();
+
+    const prodPayload = {
+      request_id: item.request.id,
+      status: "recording",
+      recording_start_date: extraDates?.recordingStart || date,
+      recording_due_date: extraDates?.recordingDue || date,
+    };
+
+    if (existing) {
+      // Update existing record
+      await supabase
+        .from(PRODUCTION_TABLE)
+        .update(prodPayload)
+        .eq("id", existing.id);
+      console.log("Updated existing production record");
+    } else {
+      // Insert new record
+      const { error: prodError } = await supabase
+        .from(PRODUCTION_TABLE)
+        .insert([prodPayload]);
+      if (prodError) console.error("Production Insert Error:", prodError);
+    }
+
     await supabase
       .from("2_booking_requests")
       .update({ status: "production" })
@@ -565,9 +610,33 @@ export default function OnboardingManager() {
 
   const activateFromHolding = async (item) => {
     setItems((prev) => prev.filter((i) => i.id !== item.id));
-    await supabase
+
+    const recStart = item.request.start_date || new Date().toISOString();
+    const recDue = item.request.end_date || new Date().toISOString();
+
+    const prodPayload = {
+      request_id: item.request.id,
+      status: "recording",
+      recording_start_date: recStart,
+      recording_due_date: recDue,
+    };
+
+    // Check if Production Record Exists First (Deduplication)
+    const { data: existing } = await supabase
       .from(PRODUCTION_TABLE)
-      .insert([{ request_id: item.request.id, status: "pre_production" }]);
+      .select("id")
+      .eq("request_id", item.request.id)
+      .single();
+
+    if (existing) {
+      await supabase
+        .from(PRODUCTION_TABLE)
+        .update(prodPayload)
+        .eq("id", existing.id);
+    } else {
+      await supabase.from(PRODUCTION_TABLE).insert([prodPayload]);
+    }
+
     await supabase
       .from("2_booking_requests")
       .update({ status: "production" })
@@ -575,7 +644,7 @@ export default function OnboardingManager() {
     showToast("Activated to Production!");
   };
 
-  // --- NUDGE ---
+  // ... (Rest of the component remains unchanged) ...
   const handleNudge = async (item) => {
     const now = new Date().toISOString().split("T")[0];
     const newStrikes = Math.min((item.strike_count || 0) + 1, 3);
@@ -610,7 +679,6 @@ export default function OnboardingManager() {
     showToast("Nudge count decreased.");
   };
 
-  // --- STATUS CHANGE (BOOT/POSTPONE) ---
   const initiateStatusChange = (item, type) => {
     if (type === "rejected") {
       setRefundModal({ isOpen: true, item });
@@ -618,15 +686,12 @@ export default function OnboardingManager() {
       executeStatusChange(item, type);
     }
   };
-
   const executeStatusChange = async (item, newStatus, refundData = null) => {
     setItems((prev) => prev.filter((i) => i.id !== item.id));
     await supabase
       .from("2_booking_requests")
       .update({ status: newStatus })
       .eq("id", item.request.id);
-
-    // Keep tracker row but mark as Rejected/Refunded in status column
     if (newStatus === "rejected" && refundData) {
       await supabase
         .from(TABLE_NAME)
@@ -637,7 +702,6 @@ export default function OnboardingManager() {
         })
         .eq("id", item.id);
     }
-
     showToast(
       newStatus === "postponed"
         ? "Project Postponed"
@@ -645,7 +709,6 @@ export default function OnboardingManager() {
     );
     setRefundModal({ isOpen: false, item: null });
   };
-
   const getNudgeStyles = (count) => {
     if (!count || count === 0)
       return {
@@ -675,16 +738,13 @@ export default function OnboardingManager() {
     };
   };
 
-  // --- FILTER & SORT ---
   const onboardingItems = items.filter((i) => i.request.status === "approved");
   const f15Items = items.filter((i) => i.request.status === "f15_production");
   const holdingItems = items.filter((i) => i.request.status === "f15_holding");
-
   let activeItems = [];
   if (subTab === "checklist") activeItems = onboardingItems;
   if (subTab === "f15") activeItems = f15Items;
   if (subTab === "holding") activeItems = holdingItems;
-
   const filteredAndSortedItems = useMemo(() => {
     let result = [...activeItems];
     if (searchQuery) {
@@ -711,7 +771,6 @@ export default function OnboardingManager() {
     });
     return result;
   }, [activeItems, searchQuery, sortOrder]);
-
   const currentSteps = subTab === "checklist" ? ONBOARDING_STEPS : F15_STEPS;
 
   if (loading)
@@ -745,9 +804,17 @@ export default function OnboardingManager() {
         }
         dateValue={dateModal.date}
         setDateValue={(d) => setDateModal({ ...dateModal, date: d })}
+        extraDates={dateModal.extraDates}
+        setExtraDates={(d) => setDateModal({ ...dateModal, extraDates: d })}
         onConfirm={confirmDateStep}
         onCancel={() =>
-          setDateModal({ isOpen: false, item: null, stepKey: null, date: "" })
+          setDateModal({
+            isOpen: false,
+            item: null,
+            stepKey: null,
+            date: "",
+            extraDates: {},
+          })
         }
       />
       <SafetyCheckModal
@@ -767,33 +834,7 @@ export default function OnboardingManager() {
         }
       />
 
-      <div
-        className={`fixed top-6 right-6 z-50 transition-all duration-300 transform ${
-          toast.show
-            ? "translate-y-0 opacity-100"
-            : "-translate-y-4 opacity-0 pointer-events-none"
-        }`}
-      >
-        <div
-          className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border backdrop-blur-md ${
-            toast.type === "error"
-              ? "bg-red-50/90 border-red-200 text-red-600"
-              : toast.type === "warning"
-              ? "bg-orange-50/90 border-orange-200 text-orange-600"
-              : "bg-slate-900/90 border-slate-800 text-white"
-          }`}
-        >
-          {toast.type === "error" ? (
-            <ShieldAlert size={20} />
-          ) : toast.type === "warning" ? (
-            <AlertTriangle size={20} />
-          ) : (
-            <CheckCircle2 size={20} />
-          )}
-          <span className="text-sm font-bold">{toast.message}</span>
-        </div>
-      </div>
-
+      {/* HEADER TABS & FILTER */}
       <div className="sticky top-4 z-40 space-y-4">
         <div className="flex justify-center">
           <div className="bg-white/80 backdrop-blur-md p-1.5 rounded-full border border-slate-200 shadow-xl flex">
@@ -834,7 +875,6 @@ export default function OnboardingManager() {
             </button>
           </div>
         </div>
-
         {(onboardingItems.length > 0 ||
           f15Items.length > 0 ||
           holdingItems.length > 0) && (
@@ -857,7 +897,6 @@ export default function OnboardingManager() {
                 </button>
               )}
             </div>
-
             <div className="flex items-center bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm gap-2">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
                 <ArrowUpDown size={12} /> Sort:
@@ -901,11 +940,9 @@ export default function OnboardingManager() {
             const progress = Math.round(
               (completedCount / currentSteps.length) * 100
             );
-
             const strikes = item.strike_count || 0;
             const nudgeConfig = getNudgeStyles(strikes);
             const NudgeIcon = nudgeConfig.icon;
-
             const isAdvanced = item.step_dates?.is_advanced_booking;
             const daysUntilStart = getDaysUntil(item.request.start_date);
 
@@ -918,7 +955,7 @@ export default function OnboardingManager() {
                     : "border-slate-100"
                 }`}
               >
-                {/* --- HEADER --- */}
+                {/* HEADER */}
                 <div className="flex flex-col lg:flex-row gap-8 mb-8 pb-8 border-b border-slate-100">
                   <div className="w-32 h-48 lg:w-40 lg:h-60 bg-slate-100 rounded-xl shrink-0 shadow-md relative overflow-hidden mx-auto lg:mx-0">
                     {item.request.cover_image_url ? (
@@ -932,7 +969,6 @@ export default function OnboardingManager() {
                       </div>
                     )}
                   </div>
-
                   <div className="flex-grow flex flex-col justify-between">
                     <div>
                       <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
@@ -960,7 +996,6 @@ export default function OnboardingManager() {
                             <User size={14} /> {item.request.client_name}
                           </div>
                         </div>
-
                         <div className="flex gap-1 items-center bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
                           {[...Array(3)].map((_, i) => (
                             <div
@@ -978,7 +1013,6 @@ export default function OnboardingManager() {
                           ))}
                         </div>
                       </div>
-
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
                         <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                           <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
@@ -1014,7 +1048,6 @@ export default function OnboardingManager() {
                           </div>
                         </div>
                       </div>
-
                       {item.request.notes && (
                         <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 mb-4 flex gap-3">
                           <StickyNote
@@ -1027,7 +1060,7 @@ export default function OnboardingManager() {
                         </div>
                       )}
 
-                      {/* ROSTER / ADVANCED CONTROLS */}
+                      {/* CONTROLS */}
                       <div className="flex flex-wrap gap-2 mb-4">
                         {isRoster && subTab === "checklist" && (
                           <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl border border-purple-100 flex-grow">
@@ -1043,8 +1076,6 @@ export default function OnboardingManager() {
                             </button>
                           </div>
                         )}
-
-                        {/* ADVANCED BOOKING TOGGLE */}
                         {subTab === "f15" && (
                           <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100 flex-grow">
                             <button
@@ -1067,7 +1098,6 @@ export default function OnboardingManager() {
                         )}
                       </div>
                     </div>
-
                     {/* PROGRESS BAR */}
                     {subTab !== "holding" && (
                       <div className="w-full bg-slate-100 rounded-full h-4 overflow-hidden mt-auto relative">
@@ -1089,8 +1119,7 @@ export default function OnboardingManager() {
                       </div>
                     )}
                   </div>
-
-                  {/* --- ACTION TOOLBAR --- */}
+                  {/* ACTIONS */}
                   <div className="lg:w-48 shrink-0 flex flex-col gap-2">
                     <a
                       href={item.request.email_thread_link || "#"}
@@ -1107,7 +1136,6 @@ export default function OnboardingManager() {
                     >
                       Open Thread <ExternalLink size={14} />
                     </a>
-
                     {subTab === "holding" ? (
                       <div className="space-y-2">
                         <div className="p-4 bg-slate-900 rounded-xl text-center">
@@ -1147,8 +1175,6 @@ export default function OnboardingManager() {
                         )}
                       </div>
                     )}
-
-                    {/* BOOT / POSTPONE ROW (Available in ALL tabs including Holding) */}
                     <div className="flex gap-2 mt-auto">
                       <button
                         onClick={() => initiateStatusChange(item, "postponed")}
@@ -1177,15 +1203,13 @@ export default function OnboardingManager() {
                     </div>
                   </div>
                 </div>
-
-                {/* --- STEPS GRID (Hidden in Holding Tank) --- */}
+                {/* STEPS */}
                 {subTab !== "holding" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                     {currentSteps.map((step, index) => {
                       const isDone = checkIsDone(item, step.key);
                       const dateStamp = getDisplayDate(item, step.key);
                       const Icon = step.icon;
-
                       return (
                         <button
                           key={step.key}
@@ -1205,7 +1229,6 @@ export default function OnboardingManager() {
                           >
                             <Icon size={18} />
                           </div>
-
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <span
@@ -1229,7 +1252,6 @@ export default function OnboardingManager() {
                               </span>
                             )}
                           </div>
-
                           {isDone && (
                             <CheckCircle2
                               size={16}
