@@ -29,6 +29,9 @@ import {
   CalendarDays,
   Image as ImageIcon,
   UploadCloud,
+  Hash,
+  Calculator,
+  ArrowRight,
 } from "lucide-react";
 
 const supabase = createClient(
@@ -59,6 +62,18 @@ const formatDateForInput = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+// --- HELPER: Format Numbers with Commas ---
+const formatNumberWithCommas = (value) => {
+  if (!value) return "";
+  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+
+// --- HELPER: Clean Number String ---
+const cleanNumber = (value) => {
+  if (!value) return 0;
+  return parseInt(String(value).replace(/,/g, ""), 10);
+};
+
 export default function SchedulerDashboard() {
   const [activeTab, setActiveTab] = useState("calendar");
   const [loading, setLoading] = useState(false);
@@ -69,32 +84,34 @@ export default function SchedulerDashboard() {
   const [items, setItems] = useState([]);
 
   // Modals
-  const [addModalOpen, setAddModalOpen] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState(null); // 'add' or 'edit'
+  const [modalOpen, setModalOpen] = useState(false);
 
   // Selection
   const [selectedDate, setSelectedDate] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
-  const [addType, setAddType] = useState("project");
 
-  // Upload State
-  const [uploading, setUploading] = useState(false);
-
-  // Form Data
-  const [newItemData, setNewItemData] = useState({
+  // Local Form Data
+  const [formData, setFormData] = useState({
+    type: "project", // 'project' or 'block'
     title: "",
     client: "",
     email: "",
     client_type: "Direct",
-    is_returning: false,
     style: "Solo",
     genre: "Fiction",
     notes: "",
-    duration: 1,
-    reason: "Personal",
+    reason: "Personal", // For blocks
     startDate: "",
     endDate: "",
+    word_count: 0,
+    word_count_display: "",
+    ref_number: "",
+    cover_image_url: "",
   });
+
+  // Upload State
+  const [uploading, setUploading] = useState(false);
 
   // Ghost Settings
   const [ghostDensity, setGhostDensity] = useState("low");
@@ -114,6 +131,21 @@ export default function SchedulerDashboard() {
   };
   const closeModal = () => setModal({ ...modal, isOpen: false });
 
+  // --- EFFECT: Lock Body Scroll When Modal is Open ---
+  useEffect(() => {
+    if (modalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [modalOpen]);
+
+  // --- CALC PFH ---
+  const calcPFH = (words) => (words ? (words / 9300).toFixed(1) : "0.0");
+
   // =========================================================================
   // 1. FETCH DATA
   // =========================================================================
@@ -123,12 +155,12 @@ export default function SchedulerDashboard() {
       const [requests, bookouts] = await Promise.all([
         supabase
           .from("2_booking_requests")
-          .select("*") // Fetch ALL fields for full editability
+          .select("*")
           .neq("status", "archived")
-          .neq("status", "deleted") // Filter out soft-deleted
+          .neq("status", "deleted")
           .neq("status", "postponed"),
         supabase
-          .from("8_bookouts")
+          .from("7_bookouts") // UPDATED TABLE NAME
           .select("id, reason, type, start_date, end_date"),
       ]);
 
@@ -137,7 +169,7 @@ export default function SchedulerDashboard() {
       if (requests.data) {
         requests.data.forEach((r) => {
           merged.push({
-            ...r, // Spread all properties
+            ...r,
             id: r.id,
             title: r.book_title || r.client_name || "Project",
             start: parseLocalDate(r.start_date),
@@ -145,9 +177,6 @@ export default function SchedulerDashboard() {
             type: "real",
             status: r.status,
             sourceTable: "2_booking_requests",
-            rawStart: r.start_date,
-            rawEnd: r.end_date,
-            // Ensure inputs have defaults
             startStr: r.start_date ? r.start_date.split("T")[0] : "",
             endStr: r.end_date ? r.end_date.split("T")[0] : "",
           });
@@ -163,9 +192,7 @@ export default function SchedulerDashboard() {
             end: parseLocalDate(b.end_date),
             type: b.type === "ghost" ? "ghost" : "personal",
             status: "blocked",
-            sourceTable: "8_bookouts",
-            rawStart: b.start_date,
-            rawEnd: b.end_date,
+            sourceTable: "7_bookouts", // UPDATED TABLE NAME
             startStr: b.start_date ? b.start_date.split("T")[0] : "",
             endStr: b.end_date ? b.end_date.split("T")[0] : "",
           });
@@ -184,46 +211,188 @@ export default function SchedulerDashboard() {
   }, []);
 
   // =========================================================================
-  // 2. EDIT ACTIONS
+  // 2. OPEN MODALS
   // =========================================================================
+
+  const openAddModal = (date) => {
+    setModalMode("add");
+    setSelectedDate(date);
+    const dateStr = formatDateForInput(date);
+
+    setFormData({
+      type: "project",
+      title: "",
+      client: "",
+      email: "",
+      client_type: "Direct",
+      style: "Solo",
+      genre: "Fiction",
+      notes: "",
+      reason: "Personal",
+      startDate: dateStr,
+      endDate: dateStr,
+      word_count: 0,
+      word_count_display: "",
+      ref_number: "",
+      cover_image_url: "",
+    });
+    setEditingItem(null);
+    setModalOpen(true);
+  };
+
   const handleItemClick = (e, item) => {
     e.stopPropagation();
-    setEditingItem(item); // Item already contains startStr/endStr from fetch
-    setEditModalOpen(true);
+    setModalMode("edit");
+    setEditingItem(item);
+
+    if (item.type === "real") {
+      setFormData({
+        type: "project",
+        title: item.book_title || "",
+        client: item.client_name || "",
+        email: item.email || "",
+        client_type: item.client_type || "Direct",
+        style: item.narration_style || "Solo",
+        genre: item.genre || "Fiction",
+        notes: item.notes || "",
+        reason: "Personal",
+        startDate: item.startStr,
+        endDate: item.endStr,
+        word_count: item.word_count || 0,
+        word_count_display: formatNumberWithCommas(item.word_count || 0),
+        ref_number: item.ref_number || "",
+        cover_image_url: item.cover_image_url || "",
+      });
+    } else {
+      setFormData({
+        type: "block",
+        title: "",
+        client: "",
+        email: "",
+        client_type: "Direct",
+        style: "Solo",
+        genre: "Fiction",
+        notes: "",
+        reason: item.title || "Personal",
+        startDate: item.startStr,
+        endDate: item.endStr,
+        word_count: 0,
+        word_count_display: "",
+        ref_number: "",
+        cover_image_url: "",
+      });
+    }
+    setModalOpen(true);
   };
 
-  const handleSaveChanges = async () => {
+  // =========================================================================
+  // 3. SAVE & ADD LOGIC
+  // =========================================================================
+  const handleSave = async () => {
+    if (!formData.startDate || !formData.endDate) {
+      return alert("Please select start and end dates");
+    }
+
     setLoading(true);
 
-    const updates = {
-      start_date: editingItem.startStr,
-      end_date: editingItem.endStr,
-    };
+    // Calculate duration for projects
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-    if (editingItem.type === "real") {
-      // Add other editable fields for projects
-      updates.book_title = editingItem.book_title;
-      updates.client_name = editingItem.client_name;
-      updates.client_type = editingItem.client_type;
-      updates.genre = editingItem.genre;
-      updates.narration_style = editingItem.narration_style;
-      updates.notes = editingItem.notes;
-      updates.cover_image_url = editingItem.cover_image_url;
+    let error = null;
+
+    if (modalMode === "add") {
+      // --- ADD LOGIC ---
+      if (formData.type === "project") {
+        if (!formData.title) {
+          setLoading(false);
+          return alert("Title required");
+        }
+        const { error: err } = await supabase
+          .from("2_booking_requests")
+          .insert([
+            {
+              book_title: formData.title,
+              client_name: formData.client || "Internal",
+              email: formData.email,
+              client_type: formData.client_type,
+              narration_style: formData.style,
+              genre: formData.genre,
+              notes: formData.notes,
+              start_date: formData.startDate,
+              end_date: formData.endDate,
+              status: "approved",
+              days_needed: diffDays,
+              word_count: cleanNumber(formData.word_count_display),
+              ref_number: formData.ref_number,
+              cover_image_url: formData.cover_image_url,
+            },
+          ]);
+        error = err;
+      } else {
+        // FIX: Correctly insert into 7_bookouts
+        const { error: err } = await supabase.from("7_bookouts").insert([
+          {
+            reason: formData.reason,
+            type: "personal",
+            start_date: formData.startDate,
+            end_date: formData.endDate,
+          },
+        ]);
+        error = err;
+      }
+    } else {
+      // --- EDIT LOGIC ---
+      if (formData.type === "project" && editingItem.type === "real") {
+        const { error: err } = await supabase
+          .from("2_booking_requests")
+          .update({
+            book_title: formData.title,
+            client_name: formData.client,
+            email: formData.email,
+            client_type: formData.client_type,
+            narration_style: formData.style,
+            genre: formData.genre,
+            notes: formData.notes,
+            start_date: formData.startDate,
+            end_date: formData.endDate,
+            days_needed: diffDays,
+            word_count: cleanNumber(formData.word_count_display),
+            ref_number: formData.ref_number,
+            cover_image_url: formData.cover_image_url,
+          })
+          .eq("id", editingItem.id);
+        error = err;
+      } else if (formData.type === "block" && editingItem.type !== "real") {
+        // FIX: Correctly update 7_bookouts
+        const { error: err } = await supabase
+          .from("7_bookouts")
+          .update({
+            reason: formData.reason,
+            start_date: formData.startDate,
+            end_date: formData.endDate,
+          })
+          .eq("id", editingItem.id);
+        error = err;
+      }
     }
-
-    const { error } = await supabase
-      .from(editingItem.sourceTable)
-      .update(updates)
-      .eq("id", editingItem.id);
 
     setLoading(false);
+
     if (error) {
-      showAlert("Error", "Could not update item.", "error");
+      console.error("Save error:", error);
+      showAlert("Error", "Could not save changes.", "error");
     } else {
-      setEditModalOpen(false);
-      fetchCalendar(); // Refresh everywhere
+      setModalOpen(false);
+      fetchCalendar();
     }
   };
+
+  // =========================================================================
+  // 4. OTHER ACTIONS (Delete, Upload, Ghost)
+  // =========================================================================
 
   const handleStatusChange = async (newStatus) => {
     if (!editingItem) return;
@@ -240,16 +409,15 @@ export default function SchedulerDashboard() {
     let error = null;
 
     if (editingItem.type === "real") {
-      // Soft delete for projects (move to archive/trash)
       const { error: err } = await supabase
         .from("2_booking_requests")
-        .update({ status: newStatus }) // 'deleted', 'archived', 'postponed'
+        .update({ status: newStatus })
         .eq("id", editingItem.id);
       error = err;
     } else {
-      // Hard delete for blocks
+      // FIX: Correctly delete from 7_bookouts
       const { error: err } = await supabase
-        .from("8_bookouts")
+        .from("7_bookouts")
         .delete()
         .eq("id", editingItem.id);
       error = err;
@@ -259,12 +427,12 @@ export default function SchedulerDashboard() {
     if (error) {
       showAlert("Error", "Action failed", "error");
     } else {
-      setEditModalOpen(false);
+      setModalOpen(false);
       fetchCalendar();
     }
   };
 
-  const handleImageUpload = async (e) => {
+  const handleImageUpload = async (e, isAddMode = false) => {
     try {
       setUploading(true);
       const file = e.target.files[0];
@@ -285,8 +453,13 @@ export default function SchedulerDashboard() {
         .from("book-covers")
         .getPublicUrl(filePath);
 
-      // Update local state immediately for preview
-      setEditingItem((prev) => ({ ...prev, cover_image_url: data.publicUrl }));
+      if (isAddMode) {
+        setFormData((prev) => ({ ...prev, cover_image_url: data.publicUrl }));
+      } else {
+        // If editing, we update local formData.
+        // If we also want immediate preview in an edit flow, formData handles it.
+        setFormData((prev) => ({ ...prev, cover_image_url: data.publicUrl }));
+      }
     } catch (error) {
       console.error("Error uploading image:", error);
       showAlert("Upload Failed", "Could not upload cover image.", "error");
@@ -295,96 +468,89 @@ export default function SchedulerDashboard() {
     }
   };
 
-  // =========================================================================
-  // 3. ADD LOGIC
-  // =========================================================================
-  const openAddModal = (date) => {
-    setSelectedDate(date);
-    const dateStr = formatDateForInput(date);
-
-    setNewItemData({
-      title: "",
-      client: "",
-      email: "",
-      client_type: "Direct",
-      is_returning: false,
-      style: "Solo",
-      genre: "Fiction",
-      notes: "",
-      duration: 1,
-      reason: "Personal",
-      startDate: dateStr,
-      endDate: dateStr,
-    });
-    setAddModalOpen(true);
-  };
-
-  const handleQuickAdd = async () => {
-    if (!newItemData.startDate || !newItemData.endDate) {
-      return alert("Please select start and end dates");
-    }
-
-    setLoading(true);
-
-    const start = new Date(newItemData.startDate);
-    const end = new Date(newItemData.endDate);
-    const diffTime = Math.abs(end - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-
-    if (addType === "project") {
-      if (!newItemData.title) {
-        setLoading(false);
-        return alert("Title required");
-      }
-      await supabase.from("2_booking_requests").insert([
-        {
-          book_title: newItemData.title,
-          client_name: newItemData.client || "Internal",
-          email: newItemData.email,
-          client_type: newItemData.client_type,
-          narration_style: newItemData.style,
-          genre: newItemData.genre,
-          notes: newItemData.notes,
-          start_date: newItemData.startDate,
-          end_date: newItemData.endDate,
-          status: "approved", // Directly approved for calendar
-          days_needed: diffDays,
-          word_count: 0,
-        },
-      ]);
-    } else {
-      await supabase.from("8_bookouts").insert([
-        {
-          reason: newItemData.reason,
-          type: "personal",
-          start_date: newItemData.startDate,
-          end_date: newItemData.endDate,
-        },
-      ]);
-    }
-
-    setLoading(false);
-    setAddModalOpen(false);
-    fetchCalendar();
-  };
-
-  // =========================================================================
-  // 4. GHOST MODE
-  // =========================================================================
   const handleGhostMode = async () => {
     setLoading(true);
-    // ... (Existing ghost logic, assume it works correctly with fetched data) ...
-    // Re-using fetch logic for consistency
+
+    // 1. Fetch Existing Data
     const [real, blocks] = await Promise.all([
       supabase
         .from("2_booking_requests")
         .select("start_date, end_date")
         .neq("status", "archived")
         .neq("status", "deleted"),
-      supabase.from("8_bookouts").select("start_date, end_date"),
+      supabase.from("7_bookouts").select("start_date, end_date"),
     ]);
-    // ... Logic to calculate gaps ...
-    // (Simplified for brevity, assuming original logic was fine but just needs to insert)
+
+    let busyRanges = [];
+    if (real.data)
+      busyRanges = [
+        ...busyRanges,
+        ...real.data.map((r) => ({
+          start: new Date(r.start_date),
+          end: new Date(r.end_date),
+        })),
+      ];
+    if (blocks.data)
+      busyRanges = [
+        ...busyRanges,
+        ...blocks.data.map((r) => ({
+          start: new Date(r.start_date),
+          end: new Date(r.end_date),
+        })),
+      ];
+    busyRanges.sort((a, b) => a.start - b.start);
+
+    // 2. Calculate Gaps
+    const newGhosts = [];
+    const today = new Date();
+    const rangeEnd = new Date();
+    rangeEnd.setMonth(today.getMonth() + parseInt(ghostMonths));
+
+    let gapTolerance =
+      ghostDensity === "high" ? 2 : ghostDensity === "medium" ? 4 : 7;
+    let cursor = new Date(today);
+    cursor.setDate(cursor.getDate() + 1);
+
+    while (cursor < rangeEnd) {
+      // Is cursor inside a busy range?
+      const conflict = busyRanges.find(
+        (r) => cursor >= r.start && cursor <= r.end
+      );
+      if (conflict) {
+        cursor = new Date(conflict.end);
+        cursor.setDate(cursor.getDate() + 1);
+        continue;
+      }
+
+      // Find next busy start
+      const nextBooking = busyRanges.find((r) => r.start > cursor);
+      const nextStart = nextBooking ? nextBooking.start : rangeEnd;
+      const daysFree = Math.floor((nextStart - cursor) / (1000 * 60 * 60 * 24));
+
+      if (daysFree >= 3) {
+        const maxDuration = Math.min(daysFree, 10);
+        const duration = Math.floor(Math.random() * (maxDuration - 3 + 1)) + 3;
+        // Random chance to fill
+        if (Math.random() > (ghostDensity === "low" ? 0.6 : 0.1)) {
+          const start = new Date(cursor);
+          const end = new Date(start);
+          end.setDate(start.getDate() + duration);
+          newGhosts.push({
+            reason: "Ghost Mode",
+            type: "ghost",
+            start_date: start.toISOString(),
+            end_date: end.toISOString(),
+          });
+          cursor = new Date(end);
+        }
+      }
+      cursor.setDate(cursor.getDate() + gapTolerance);
+    }
+
+    if (newGhosts.length > 0) {
+      await supabase.from("7_bookouts").insert(newGhosts);
+    }
+
     setLoading(false);
     fetchCalendar();
   };
@@ -411,7 +577,6 @@ export default function SchedulerDashboard() {
       <div className="animate-fade-in relative">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
           <div className="flex flex-wrap gap-2">
-            {/* Legend */}
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100 text-emerald-700">
               <div className="w-2 h-2 rounded-full bg-emerald-500" /> Booked
             </div>
@@ -517,7 +682,6 @@ export default function SchedulerDashboard() {
                     );
                   })}
                 </div>
-                {/* Plus Icon Top-Right, non-blocking */}
                 <div className="absolute top-1 left-1 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
                   <Plus
                     className="text-blue-500 bg-white rounded-full shadow-md p-1"
@@ -532,49 +696,150 @@ export default function SchedulerDashboard() {
     );
   };
 
+  const renderGhostMode = () => (
+    <div className="max-w-xl mx-auto py-8 animate-fade-in">
+      <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 md:p-8 rounded-3xl shadow-xl text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+        <h3 className="text-xl font-black uppercase mb-2 flex items-center gap-2 relative z-10">
+          <Ghost className="text-teal-400" /> Smart Ghost Generator
+        </h3>
+        <p className="text-slate-400 text-sm mb-8 relative z-10">
+          Automatically finds gaps and fills them with fake "NDA Projects".
+        </p>
+        <div className="space-y-6 relative z-10">
+          <div>
+            <label className="text-xs font-bold uppercase text-slate-500 tracking-wider mb-2 block">
+              Density
+            </label>
+            <div className="flex bg-white/5 p-1 rounded-xl">
+              {["low", "medium", "high"].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setGhostDensity(d)}
+                  className={`flex-1 py-3 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                    ghostDensity === d
+                      ? "bg-teal-500 text-white shadow-lg"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase text-slate-500 tracking-wider mb-2 block">
+              Lookahead
+            </label>
+            <div className="flex bg-white/5 p-1 rounded-xl">
+              {[3, 6, 12].map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setGhostMonths(m)}
+                  className={`flex-1 py-3 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                    ghostMonths === m
+                      ? "bg-indigo-500 text-white shadow-lg"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {m} Mo
+                </button>
+              ))}
+            </div>
+          </div>
+          <button
+            onClick={handleGhostMode}
+            disabled={loading}
+            className="w-full py-4 bg-white text-slate-900 rounded-xl font-black uppercase tracking-widest hover:bg-teal-400 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {loading ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <>
+                <Wand2 size={18} /> Populate Ghosts
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden relative">
-      {/* EDIT MODAL - FULLY FEATURED */}
-      {editModalOpen && editingItem && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+    <div className="bg-white p-6 md:px-12 md:py-8 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden relative">
+      {/* UNIFIED MODAL (ADD & EDIT) */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-            onClick={() => setEditModalOpen(false)}
+            onClick={() => setModalOpen(false)}
           />
           <div className="relative bg-white rounded-[2.5rem] p-8 max-w-2xl w-full shadow-2xl animate-scale-up max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-1">
-                  {editingItem.type === "real"
-                    ? "Editing Project"
-                    : "Editing Block"}
-                </span>
-                <h3 className="text-3xl font-black text-slate-900">
-                  {editingItem.type === "real" ? "Project Details" : "Time Off"}
+                <h3 className="text-2xl font-black uppercase text-slate-900 mb-1">
+                  {modalMode === "add" ? "Add to Schedule" : "Edit Details"}
                 </h3>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  {modalMode === "add"
+                    ? selectedDate?.toLocaleDateString("en-US", {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                      })
+                    : editingItem?.type === "real"
+                    ? "Project Entry"
+                    : "Time Off"}
+                </p>
               </div>
               <button
-                onClick={() => setEditModalOpen(false)}
+                onClick={() => setModalOpen(false)}
                 className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"
               >
                 <X size={20} />
               </button>
             </div>
 
+            {/* Type Selector (Only in Add Mode) */}
+            {modalMode === "add" && (
+              <div className="flex p-1 bg-slate-100 rounded-xl mb-6">
+                <button
+                  onClick={() => setFormData({ ...formData, type: "project" })}
+                  className={`flex-1 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    formData.type === "project"
+                      ? "bg-white shadow-sm text-slate-900"
+                      : "text-slate-400 hover:text-slate-600"
+                  }`}
+                >
+                  Project
+                </button>
+                <button
+                  onClick={() => setFormData({ ...formData, type: "block" })}
+                  className={`flex-1 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    formData.type === "block"
+                      ? "bg-white shadow-sm text-slate-900"
+                      : "text-slate-400 hover:text-slate-600"
+                  }`}
+                >
+                  Block
+                </button>
+              </div>
+            )}
+
             <div className="flex flex-col md:flex-row gap-8">
-              {/* LEFT: Cover Image (Real Projects Only) */}
-              {editingItem.type === "real" && (
-                <div className="w-full md:w-48 shrink-0">
+              {/* LEFT: Cover Image (Projects Only) */}
+              {formData.type === "project" && (
+                <div className="w-full md:w-40 shrink-0">
                   <div className="aspect-[2/3] bg-slate-100 rounded-2xl overflow-hidden relative shadow-inner border border-slate-200 group">
-                    {editingItem.cover_image_url ? (
+                    {formData.cover_image_url ? (
                       <img
-                        src={editingItem.cover_image_url}
+                        src={formData.cover_image_url}
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
-                        <ImageIcon size={32} className="mb-2" />
-                        <span className="text-[9px] font-black uppercase">
+                        <ImageIcon size={28} className="mb-2" />
+                        <span className="text-[8px] font-black uppercase">
                           No Cover
                         </span>
                       </div>
@@ -583,16 +848,18 @@ export default function SchedulerDashboard() {
                       {uploading ? (
                         <Loader2 className="animate-spin" />
                       ) : (
-                        <UploadCloud size={24} />
+                        <UploadCloud size={20} />
                       )}
-                      <span className="text-[9px] font-bold uppercase mt-2">
+                      <span className="text-[8px] font-bold uppercase mt-2">
                         {uploading ? "Uploading" : "Change"}
                       </span>
                       <input
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={handleImageUpload}
+                        onChange={(e) =>
+                          handleImageUpload(e, modalMode === "add")
+                        }
                         disabled={uploading}
                       />
                     </label>
@@ -602,425 +869,245 @@ export default function SchedulerDashboard() {
 
               {/* RIGHT: Form Fields */}
               <div className="flex-grow space-y-4">
-                {editingItem.type === "real" ? (
+                {/* DATES */}
+                <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div>
+                    <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      className="w-full bg-white p-2 rounded-lg text-xs font-bold border-transparent focus:border-slate-300 transition-all outline-none"
+                      value={formData.startDate}
+                      onChange={(e) =>
+                        setFormData({ ...formData, startDate: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      className="w-full bg-white p-2 rounded-lg text-xs font-bold border-transparent focus:border-slate-300 transition-all outline-none"
+                      value={formData.endDate}
+                      onChange={(e) =>
+                        setFormData({ ...formData, endDate: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+
+                {formData.type === "project" ? (
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[9px] font-bold uppercase text-slate-400">
+                        <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
                           Title
                         </label>
                         <input
-                          className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border-transparent focus:border-slate-300 focus:bg-white border transition-all outline-none"
-                          value={editingItem.book_title || ""}
+                          className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
+                          value={formData.title}
                           onChange={(e) =>
-                            setEditingItem({
-                              ...editingItem,
-                              book_title: e.target.value,
-                            })
+                            setFormData({ ...formData, title: e.target.value })
                           }
+                          placeholder="Book Title..."
                         />
                       </div>
                       <div>
-                        <label className="text-[9px] font-bold uppercase text-slate-400">
+                        <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
                           Client
                         </label>
                         <input
-                          className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border-transparent focus:border-slate-300 focus:bg-white border transition-all outline-none"
-                          value={editingItem.client_name || ""}
+                          className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
+                          value={formData.client}
                           onChange={(e) =>
-                            setEditingItem({
-                              ...editingItem,
-                              client_name: e.target.value,
-                            })
+                            setFormData({ ...formData, client: e.target.value })
                           }
+                          placeholder="Author Name..."
                         />
                       </div>
                     </div>
+
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[9px] font-bold uppercase text-slate-400">
-                          Genre
+                        <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
+                          Ref #
                         </label>
                         <input
-                          className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border-transparent focus:border-slate-300 focus:bg-white border transition-all outline-none"
-                          value={editingItem.genre || ""}
+                          className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold uppercase"
+                          value={formData.ref_number}
                           onChange={(e) =>
-                            setEditingItem({
-                              ...editingItem,
-                              genre: e.target.value,
+                            setFormData({
+                              ...formData,
+                              ref_number: e.target.value,
                             })
                           }
+                          placeholder="INV-001"
                         />
                       </div>
                       <div>
-                        <label className="text-[9px] font-bold uppercase text-slate-400">
-                          Style
+                        <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
+                          Email
                         </label>
                         <input
-                          className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border-transparent focus:border-slate-300 focus:bg-white border transition-all outline-none"
-                          value={editingItem.narration_style || ""}
+                          className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
+                          value={formData.email}
                           onChange={(e) =>
-                            setEditingItem({
-                              ...editingItem,
-                              narration_style: e.target.value,
-                            })
+                            setFormData({ ...formData, email: e.target.value })
                           }
+                          placeholder="client@email.com"
                         />
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
+                          Word Count
+                        </label>
+                        <input
+                          className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
+                          value={formData.word_count_display}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              word_count_display: formatNumberWithCommas(
+                                e.target.value.replace(/[^0-9]/g, "")
+                              ),
+                            })
+                          }
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
+                          Est. PFH
+                        </label>
+                        <div className="w-full bg-slate-100 p-3 rounded-xl text-sm font-black text-slate-600 flex items-center gap-2">
+                          <Clock size={14} />{" "}
+                          {calcPFH(cleanNumber(formData.word_count_display))}{" "}
+                          hrs
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
+                          Genre
+                        </label>
+                        <select
+                          className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
+                          value={formData.genre}
+                          onChange={(e) =>
+                            setFormData({ ...formData, genre: e.target.value })
+                          }
+                        >
+                          <option>Fiction</option>
+                          <option>Non-Fic</option>
+                          <option>Sci-Fi</option>
+                          <option>Romance</option>
+                          <option>Thriller</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
+                          Style
+                        </label>
+                        <select
+                          className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
+                          value={formData.style}
+                          onChange={(e) =>
+                            setFormData({ ...formData, style: e.target.value })
+                          }
+                        >
+                          <option>Solo</option>
+                          <option>Dual</option>
+                          <option>Duet</option>
+                          <option>Multicast</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
+                        Notes
+                      </label>
+                      <textarea
+                        className="w-full bg-slate-50 p-3 rounded-xl text-sm font-medium resize-none h-20"
+                        value={formData.notes}
+                        onChange={(e) =>
+                          setFormData({ ...formData, notes: e.target.value })
+                        }
+                        placeholder="Project details..."
+                      />
                     </div>
                   </>
                 ) : (
                   <div>
-                    <label className="text-[9px] font-bold uppercase text-slate-400">
+                    <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
                       Reason
                     </label>
-                    <input
-                      className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold"
-                      value={editingItem.title}
-                      disabled
-                    />
+                    <select
+                      className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
+                      value={formData.reason}
+                      onChange={(e) =>
+                        setFormData({ ...formData, reason: e.target.value })
+                      }
+                    >
+                      <option>Vacation</option>
+                      <option>Personal</option>
+                      <option>Travel</option>
+                      <option>Admin Work</option>
+                    </select>
                   </div>
                 )}
 
-                {/* DATES */}
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="flex items-center gap-2 mb-3 text-slate-400 text-[10px] font-black uppercase">
-                    <CalendarDays size={14} /> Schedule
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
-                        Start
-                      </label>
-                      <input
-                        type="date"
-                        className="w-full bg-white p-2 rounded-xl text-xs font-bold"
-                        value={editingItem.startStr}
-                        onChange={(e) =>
-                          setEditingItem({
-                            ...editingItem,
-                            startStr: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
-                        End
-                      </label>
-                      <input
-                        type="date"
-                        className="w-full bg-white p-2 rounded-xl text-xs font-bold"
-                        value={editingItem.endStr}
-                        onChange={(e) =>
-                          setEditingItem({
-                            ...editingItem,
-                            endStr: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-4">
+                <div className="flex gap-2 mt-4">
                   <button
-                    onClick={handleSaveChanges}
-                    className="flex-1 py-4 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-600 shadow-lg flex items-center justify-center gap-2 transition-all"
+                    onClick={handleSave}
+                    disabled={loading}
+                    className="flex-grow py-4 bg-slate-900 text-white rounded-xl font-black uppercase flex items-center justify-center gap-2 hover:bg-emerald-600 transition-colors"
                   >
-                    <Save size={16} /> Save Changes
+                    {loading ? (
+                      <Loader2 className="animate-spin" size={16} />
+                    ) : (
+                      <CheckCircle2 size={16} />
+                    )}{" "}
+                    Save Changes
                   </button>
 
-                  {/* DELETE ACTIONS */}
-                  {editingItem.type === "real" ? (
-                    <div className="flex gap-2">
+                  {/* Show delete options only in EDIT mode */}
+                  {modalMode === "edit" &&
+                    (formData.type === "project" ? (
+                      <>
+                        <button
+                          onClick={() => handleStatusChange("archived")}
+                          className="p-4 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 hover:text-slate-700 transition-all"
+                          title="Archive"
+                        >
+                          <Archive size={20} />
+                        </button>
+                        <button
+                          onClick={() => handleStatusChange("deleted")}
+                          className="p-4 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 hover:text-red-600 transition-all"
+                          title="Delete"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </>
+                    ) : (
                       <button
-                        onClick={() => handleStatusChange("archived")}
-                        className="p-4 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 hover:text-slate-700"
-                        title="Archive"
-                      >
-                        <Archive size={20} />
-                      </button>
-                      <button
-                        onClick={() => handleStatusChange("deleted")}
-                        className="p-4 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 hover:text-red-600"
+                        onClick={() => handleStatusChange("boot")}
+                        className="p-4 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 hover:text-red-600 transition-all"
                         title="Delete"
                       >
                         <Trash2 size={20} />
                       </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => handleStatusChange("boot")}
-                      className="p-4 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 hover:text-red-600"
-                      title="Delete"
-                    >
-                      <Trash2 size={20} />
-                    </button>
-                  )}
+                    ))}
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ADD MODAL - Keeping Simple & Functional */}
-      {addModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm"
-            onClick={() => setAddModalOpen(false)}
-          />
-          <div className="relative bg-white rounded-[2rem] p-8 max-w-lg w-full shadow-2xl animate-scale-up">
-            {/* ... (Existing Add Modal Content - Optimized for quick entry) ... */}
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h3 className="text-2xl font-black uppercase text-slate-900 mb-1">
-                  Add to Schedule
-                </h3>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  {selectedDate?.toLocaleDateString("en-US", {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-              </div>
-              <button
-                onClick={() => setAddModalOpen(false)}
-                className="p-2 bg-slate-100 rounded-full"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex p-1 bg-slate-100 rounded-xl mb-4">
-                <button
-                  onClick={() => setAddType("project")}
-                  className={`flex-1 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    addType === "project"
-                      ? "bg-white shadow-sm text-slate-900"
-                      : "text-slate-400 hover:text-slate-600"
-                  }`}
-                >
-                  Project
-                </button>
-                <button
-                  onClick={() => setAddType("block")}
-                  className={`flex-1 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    addType === "block"
-                      ? "bg-white shadow-sm text-slate-900"
-                      : "text-slate-400 hover:text-slate-600"
-                  }`}
-                >
-                  Block
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold border border-slate-200"
-                    value={newItemData.startDate}
-                    onChange={(e) =>
-                      setNewItemData({
-                        ...newItemData,
-                        startDate: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold border border-slate-200"
-                    value={newItemData.endDate}
-                    onChange={(e) =>
-                      setNewItemData({
-                        ...newItemData,
-                        endDate: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-
-              {addType === "project" ? (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
-                        Title
-                      </label>
-                      <input
-                        className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
-                        value={newItemData.title}
-                        onChange={(e) =>
-                          setNewItemData({
-                            ...newItemData,
-                            title: e.target.value,
-                          })
-                        }
-                        placeholder="Book Title..."
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
-                        Client
-                      </label>
-                      <input
-                        className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
-                        value={newItemData.client}
-                        onChange={(e) =>
-                          setNewItemData({
-                            ...newItemData,
-                            client: e.target.value,
-                          })
-                        }
-                        placeholder="Author Name..."
-                      />
-                    </div>
-                  </div>
-                  {/* New Fields added to Quick Add */}
-                  <div>
-                    <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
-                      Email
-                    </label>
-                    <input
-                      className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
-                      value={newItemData.email}
-                      onChange={(e) =>
-                        setNewItemData({
-                          ...newItemData,
-                          email: e.target.value,
-                        })
-                      }
-                      placeholder="client@email.com"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
-                        Type
-                      </label>
-                      <select
-                        className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
-                        value={newItemData.client_type}
-                        onChange={(e) =>
-                          setNewItemData({
-                            ...newItemData,
-                            client_type: e.target.value,
-                          })
-                        }
-                      >
-                        <option>Direct</option>
-                        <option>Publisher</option>
-                        <option>Roster</option>
-                        <option>Audition</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
-                        Genre
-                      </label>
-                      <select
-                        className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
-                        value={newItemData.genre}
-                        onChange={(e) =>
-                          setNewItemData({
-                            ...newItemData,
-                            genre: e.target.value,
-                          })
-                        }
-                      >
-                        <option>Fiction</option>
-                        <option>Non-Fic</option>
-                        <option>Sci-Fi</option>
-                        <option>Romance</option>
-                        <option>Thriller</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
-                        Style
-                      </label>
-                      <select
-                        className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
-                        value={newItemData.style}
-                        onChange={(e) =>
-                          setNewItemData({
-                            ...newItemData,
-                            style: e.target.value,
-                          })
-                        }
-                      >
-                        <option>Solo</option>
-                        <option>Dual</option>
-                        <option>Duet</option>
-                        <option>Multicast</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
-                      Notes
-                    </label>
-                    <textarea
-                      className="w-full bg-slate-50 p-3 rounded-xl text-sm font-medium resize-none h-20"
-                      value={newItemData.notes}
-                      onChange={(e) =>
-                        setNewItemData({
-                          ...newItemData,
-                          notes: e.target.value,
-                        })
-                      }
-                      placeholder="Project details..."
-                    />
-                  </div>
-                </>
-              ) : (
-                <div>
-                  <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">
-                    Reason
-                  </label>
-                  <select
-                    className="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold"
-                    value={newItemData.reason}
-                    onChange={(e) =>
-                      setNewItemData({ ...newItemData, reason: e.target.value })
-                    }
-                  >
-                    <option>Vacation</option>
-                    <option>Personal</option>
-                    <option>Travel</option>
-                    <option>Admin Work</option>
-                  </select>
-                </div>
-              )}
-
-              <button
-                onClick={handleQuickAdd}
-                disabled={loading}
-                className="w-full py-4 bg-slate-900 text-white rounded-xl font-black uppercase flex items-center justify-center gap-2 hover:bg-emerald-600 transition-colors"
-              >
-                {loading ? (
-                  <Loader2 className="animate-spin" size={16} />
-                ) : (
-                  <CheckCircle2 size={16} />
-                )}{" "}
-                Save
-              </button>
             </div>
           </div>
         </div>
@@ -1068,19 +1155,60 @@ export default function SchedulerDashboard() {
 
       <div className="min-h-[400px]">
         {activeTab === "calendar" && renderCalendarView()}
-        {/* Render Ghost Mode Logic (assuming existing or placeholder) */}
         {activeTab === "ghost" && (
           <div className="text-center py-20 bg-slate-50 rounded-3xl border border-slate-100">
             <Ghost className="mx-auto text-slate-300 mb-4" size={48} />
             <p className="text-slate-400 font-bold uppercase text-xs">
               Ghost Generator Active
             </p>
-            <button
-              onClick={handleGhostMode}
-              className="mt-4 px-6 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold uppercase hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-all"
-            >
-              Run Auto-Fill
-            </button>
+            <div className="space-y-4 mt-6 max-w-xs mx-auto">
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">
+                  Density
+                </label>
+                <div className="flex bg-slate-100 p-1 rounded-lg">
+                  {["low", "medium", "high"].map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setGhostDensity(d)}
+                      className={`flex-1 py-2 text-[10px] font-bold uppercase rounded-md transition-all ${
+                        ghostDensity === d
+                          ? "bg-white shadow-sm text-purple-600"
+                          : "text-slate-400 hover:text-slate-600"
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">
+                  Lookahead
+                </label>
+                <div className="flex bg-slate-100 p-1 rounded-lg">
+                  {[3, 6, 12].map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setGhostMonths(m)}
+                      className={`flex-1 py-2 text-[10px] font-bold uppercase rounded-md transition-all ${
+                        ghostMonths === m
+                          ? "bg-white shadow-sm text-purple-600"
+                          : "text-slate-400 hover:text-slate-600"
+                      }`}
+                    >
+                      {m} Mo
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={handleGhostMode}
+                className="w-full py-3 bg-purple-600 text-white rounded-xl text-xs font-bold uppercase hover:bg-purple-700 transition-all shadow-md shadow-purple-200"
+              >
+                Generate Ghosts
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -6,10 +6,13 @@ import { useRouter } from "next/navigation";
 
 // --- COMPONENTS ---
 import ResponsiveLeads from "@/src/components/production-manager/ResponsiveLeads";
+import AuditionManager from "@/src/components/production-manager/AuditionManager";
 import PendingProjects from "@/src/components/production-manager/PendingProjects";
 import SchedulerDashboard from "@/src/components/production-manager/SchedulerDashboard";
 import OnboardingManager from "@/src/components/production-manager/OnboardingManager";
-import ProductionBoard from "@/src/components/production-manager/ProductionBoard"; // Imported
+import ProductionBoard from "@/src/components/production-manager/ProductionBoard";
+// IMPORT THE NEW COMPONENT
+import InvoicesAndPayments from "@/src/components/production-manager/InvoicesAndPayments";
 import Archives from "@/src/components/production-manager/Archives";
 
 import {
@@ -18,9 +21,9 @@ import {
   Mic2,
   Briefcase,
   Archive,
-  CheckCircle2,
   CalendarRange,
   MessageCircle,
+  DollarSign, // Added DollarSign icon
 } from "lucide-react";
 
 const supabase = createClient(
@@ -36,6 +39,8 @@ const TABS = [
   { id: "calendar", label: "Calendar Ops", icon: CalendarRange },
   { id: "onboarding", label: "Onboarding & First 15", icon: Kanban },
   { id: "production", label: "Production", icon: Briefcase },
+  // ADDED FINANCIALS BEFORE ARCHIVE
+  { id: "financials", label: "Financials", icon: DollarSign },
   { id: "archive", label: "Archive", icon: Archive },
 ];
 
@@ -49,6 +54,7 @@ export default function ProductionManager() {
   const allProjectsRef = useRef(null);
 
   // --- FETCH DATA ---
+  // We fetch basic counts here for the notification badges
   const fetchAllData = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -64,33 +70,6 @@ export default function ProductionManager() {
   useEffect(() => {
     fetchAllData();
   }, []);
-
-  // --- ACTIONS ---
-  const moveBooking = async (id, newStatus, extraUpdates = {}) => {
-    const { error } = await supabase
-      .from("2_booking_requests")
-      .update({ status: newStatus, ...extraUpdates })
-      .eq("id", id);
-
-    if (!error) {
-      setBookings((prev) =>
-        prev.map((b) =>
-          b.id === id ? { ...b, status: newStatus, ...extraUpdates } : b
-        )
-      );
-      fetchAllData();
-    }
-  };
-
-  const filteredBookings = bookings.filter((b) => {
-    // Only used for Auditions now
-    if (activeTab === "auditions")
-      return (
-        b.client_type === "Audition" &&
-        !["production", "archive", "booted"].includes(b.status)
-      );
-    return true;
-  });
 
   // --- KEYBOARD NAVIGATION ---
   const handleTabNavigation = (e) => {
@@ -183,6 +162,10 @@ export default function ProductionManager() {
         <div className="space-y-4">
           {activeTab === "responsive" && <ResponsiveLeads />}
 
+          {/* Audition Tracker */}
+          {activeTab === "auditions" && <AuditionManager />}
+
+          {/* New Leads/Inquiries */}
           {activeTab === "requests" && (
             <PendingProjects
               onUpdate={fetchAllData}
@@ -193,60 +176,16 @@ export default function ProductionManager() {
           {activeTab === "calendar" && <SchedulerDashboard />}
           {activeTab === "onboarding" && <OnboardingManager />}
 
-          {/* HERE IS THE FIX: Explicitly rendering ProductionBoard */}
+          {/* Production Board (Contains Invoice Modal Logic) */}
           {activeTab === "production" && <ProductionBoard />}
 
-          {activeTab === "archive" && <Archives />}
-
-          {/* SHARED LISTS (Now only for Auditions) */}
-          {activeTab === "auditions" && (
-            <div className="grid grid-cols-1 gap-4">
-              {filteredBookings.length === 0 ? (
-                <div className="text-center py-24 bg-white rounded-[2.5rem] border border-slate-200 shadow-sm">
-                  <p className="text-slate-400 font-bold uppercase tracking-widest">
-                    No projects in {activeTab}
-                  </p>
-                </div>
-              ) : (
-                filteredBookings.map((b) => (
-                  <div
-                    key={b.id}
-                    className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:shadow-md transition-all"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg bg-pink-100 text-pink-600">
-                        {b.book_title?.charAt(0)}
-                      </div>
-                      <div>
-                        <h3 className="font-black text-slate-900">
-                          {b.book_title}
-                        </h3>
-                        <p className="text-xs text-slate-500 font-bold uppercase tracking-wide">
-                          {b.client_name}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right hidden md:block">
-                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
-                          Due Date
-                        </p>
-                        <p className="text-sm font-bold text-slate-700">
-                          {new Date(b.end_date).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => moveBooking(b.id, "archive")}
-                        className="p-3 rounded-xl bg-slate-50 text-slate-400 hover:bg-slate-900 hover:text-white transition-all"
-                      >
-                        <CheckCircle2 size={18} />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+          {activeTab === "financials" && (
+            <InvoicesAndPayments
+              initialProject={null} // Component will now fetch and allow selection
+            />
           )}
+
+          {activeTab === "archive" && <Archives />}
         </div>
       </div>
     </div>

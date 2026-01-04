@@ -26,6 +26,7 @@ import {
   Pencil,
   Save,
   Calculator,
+  ArrowRight,
   X as XIcon,
 } from "lucide-react";
 
@@ -43,6 +44,39 @@ const TABS = [
   { id: "on_hold", label: "On Hold", icon: PauseCircle },
   { id: "greenlit", label: "Greenlit", icon: CheckCircle2 },
 ];
+
+// --- HELPERS ---
+const formatNumberWithCommas = (value) => {
+  if (!value) return "";
+  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+
+const cleanNumber = (value) => {
+  if (!value) return 0;
+  return parseInt(String(value).replace(/,/g, ""), 10);
+};
+
+const calcPFH = (words) => (words ? (words / 9300).toFixed(1) : "0.0");
+
+// *** FIX: Manual Date Parsing to ignore Timezones ***
+const formatDate = (dateStr) => {
+  if (!dateStr) return "-";
+  // Split the string "YYYY-MM-DD" directly to avoid UTC conversion issues
+  const parts = dateStr.split("T")[0].split("-");
+  if (parts.length !== 3) return dateStr;
+
+  const year = parseInt(parts[0]);
+  const monthIndex = parseInt(parts[1]) - 1; // Month is 0-indexed
+  const day = parseInt(parts[2]);
+
+  const date = new Date(year, monthIndex, day);
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
 
 export default function PendingProjects({ onUpdate }) {
   const [requests, setRequests] = useState([]);
@@ -97,26 +131,35 @@ export default function PendingProjects({ onUpdate }) {
       email: item.email || "",
       email_thread_link: item.email_thread_link || "",
       word_count: item.word_count || 0,
+      word_count_display: formatNumberWithCommas(item.word_count || 0),
       genre: item.genre || "",
       narration_style: item.narration_style || "",
-      start_date: item.start_date || "",
-      end_date: item.end_date || "",
+      // Ensure we grab just the YYYY-MM-DD part for the input value
+      start_date: item.start_date ? item.start_date.split("T")[0] : "",
+      end_date: item.end_date ? item.end_date.split("T")[0] : "",
       notes: item.notes || "",
-      ref_number: item.ref_number || item.id.slice(0, 8), // Default to ID slice if empty, but editable
+      ref_number: item.ref_number || item.id.slice(0, 8),
+      cover_image_url: item.cover_image_url || "",
     });
   };
 
   const saveEdits = async () => {
     try {
+      const payload = {
+        ...editForm,
+        word_count: cleanNumber(editForm.word_count_display),
+      };
+      delete payload.word_count_display;
+
       const { error } = await supabase
         .from("2_booking_requests")
-        .update(editForm)
+        .update(payload)
         .eq("id", editingId);
 
       if (error) throw error;
 
       setRequests((prev) =>
-        prev.map((r) => (r.id === editingId ? { ...r, ...editForm } : r))
+        prev.map((r) => (r.id === editingId ? { ...r, ...payload } : r))
       );
       setEditingId(null);
       showToast("Project details updated");
@@ -195,7 +238,7 @@ export default function PendingProjects({ onUpdate }) {
     }
   };
 
-  const handleImageUpload = async (e, itemId) => {
+  const handleImageUpload = async (e, itemId, isEditingMode = false) => {
     try {
       setUploadingId(itemId);
       const file = e.target.files[0];
@@ -217,17 +260,20 @@ export default function PendingProjects({ onUpdate }) {
         .getPublicUrl(filePath);
       const publicUrl = data.publicUrl;
 
-      await supabase
-        .from("2_booking_requests")
-        .update({ cover_image_url: publicUrl })
-        .eq("id", itemId);
-      setRequests((prev) =>
-        prev.map((r) =>
-          r.id === itemId ? { ...r, cover_image_url: publicUrl } : r
-        )
-      );
-
-      showToast("Cover updated");
+      if (isEditingMode) {
+        setEditForm((prev) => ({ ...prev, cover_image_url: publicUrl }));
+      } else {
+        await supabase
+          .from("2_booking_requests")
+          .update({ cover_image_url: publicUrl })
+          .eq("id", itemId);
+        setRequests((prev) =>
+          prev.map((r) =>
+            r.id === itemId ? { ...r, cover_image_url: publicUrl } : r
+          )
+        );
+        showToast("Cover updated");
+      }
     } catch (error) {
       console.error("Error uploading image:", error);
       showToast("Upload failed", "error");
@@ -249,20 +295,8 @@ export default function PendingProjects({ onUpdate }) {
     (r) => getTabForStatus(r.status) === activeTab
   );
 
-  // --- RENDER HELPERS ---
-  const formatNumber = (num) => (num ? Number(num).toLocaleString() : "0");
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "-";
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-  const calcPFH = (words) => (words ? (words / 9300).toFixed(1) : "0.0");
-
   return (
-    <div className="space-y-8 pb-24">
+    <div className="space-y-8 pb-24 md:px-12">
       <div
         className={`fixed top-6 right-6 z-50 transition-all duration-300 transform ${
           toast.show
@@ -287,7 +321,7 @@ export default function PendingProjects({ onUpdate }) {
       </div>
 
       <div className="flex justify-center">
-        <div className="flex bg-white p-1.5 rounded-full border border-slate-200 shadow-sm">
+        <div className="flex bg-white p-1.5 rounded-full border border-slate-200 shadow-sm overflow-x-auto max-w-full">
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             const count = requests.filter(
@@ -298,7 +332,7 @@ export default function PendingProjects({ onUpdate }) {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all ${
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                   isActive
                     ? "bg-slate-900 text-white shadow-md"
                     : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
@@ -357,11 +391,9 @@ export default function PendingProjects({ onUpdate }) {
                     <div className="aspect-[2/3] bg-slate-100 rounded-2xl overflow-hidden relative shadow-inner border border-slate-200 group/image">
                       {isEditing ? (
                         <div className="w-full h-full relative">
-                          {editForm.cover_image_url || item.cover_image_url ? (
+                          {editForm.cover_image_url ? (
                             <img
-                              src={
-                                editForm.cover_image_url || item.cover_image_url
-                              }
+                              src={editForm.cover_image_url}
                               alt="Cover"
                               className="w-full h-full object-cover opacity-50"
                             />
@@ -371,7 +403,7 @@ export default function PendingProjects({ onUpdate }) {
                             </div>
                           )}
                           <label className="absolute inset-0 flex flex-col items-center justify-center text-slate-700 cursor-pointer hover:bg-slate-200/50 transition-colors">
-                            {isUploading ? (
+                            {uploadingId === "editing" ? (
                               <Loader2 className="animate-spin" />
                             ) : (
                               <UploadCloud size={32} />
@@ -383,8 +415,10 @@ export default function PendingProjects({ onUpdate }) {
                               type="file"
                               accept="image/*"
                               className="hidden"
-                              onChange={(e) => handleImageUpload(e, item.id)}
-                              disabled={isUploading}
+                              onChange={(e) =>
+                                handleImageUpload(e, "editing", true)
+                              }
+                              disabled={uploadingId === "editing"}
                             />
                           </label>
                         </div>
@@ -506,16 +540,30 @@ export default function PendingProjects({ onUpdate }) {
                               Word Count
                             </label>
                             <input
-                              type="number"
                               className="w-full bg-slate-50 p-2 rounded text-xs font-bold"
-                              value={editForm.word_count}
+                              value={editForm.word_count_display}
                               onChange={(e) =>
                                 setEditForm({
                                   ...editForm,
-                                  word_count: parseInt(e.target.value) || 0,
+                                  word_count_display: formatNumberWithCommas(
+                                    e.target.value.replace(/[^0-9]/g, "")
+                                  ),
                                 })
                               }
+                              placeholder="0"
                             />
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-bold text-slate-400">
+                              PFH Est.
+                            </label>
+                            <div className="w-full bg-slate-100 p-2 rounded text-xs font-bold text-slate-600 flex items-center gap-1">
+                              <Calculator size={10} />{" "}
+                              {calcPFH(
+                                cleanNumber(editForm.word_count_display)
+                              )}{" "}
+                              hrs
+                            </div>
                           </div>
                           <div>
                             <label className="text-[9px] font-bold text-slate-400">
@@ -547,6 +595,8 @@ export default function PendingProjects({ onUpdate }) {
                               }
                             />
                           </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="text-[9px] font-bold text-slate-400">
                               Start Date
@@ -682,7 +732,7 @@ export default function PendingProjects({ onUpdate }) {
                               <Hash size={10} /> Word Count
                             </div>
                             <div className="text-xs font-black text-slate-700">
-                              {formatNumber(item.word_count)}
+                              {formatNumberWithCommas(item.word_count)}
                             </div>
                           </div>
                           <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
