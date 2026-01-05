@@ -12,22 +12,43 @@ const BACKDROPS = {
 
 const SNOW_COLORS = {
   teal: "#2dd4bf",
-  yellow: "#facc15", // Yellow-400
+  yellow: "#facc15",
 };
 
 function HallOfHumanWriting({ theme }) {
   const { viewport } = useThree();
   const texture = useTexture(BACKDROPS[theme] || BACKDROPS.teal);
 
+  // 1. Aspect Ratio Correction (Prevents distortion)
+  const imageAspect = 16 / 9;
+  const viewportAspect = viewport.width / viewport.height;
+
+  let scaleWidth, scaleHeight;
+
+  if (viewportAspect > imageAspect) {
+    scaleWidth = viewport.width;
+    scaleHeight = viewport.width / imageAspect;
+  } else {
+    scaleHeight = viewport.height;
+    scaleWidth = viewport.height * imageAspect;
+  }
+
+  // 2. Normalizing Size
+  // We place it at z=-40 (Standard depth).
+  // At z=-40 with camera at z=10, the view is 5x wider than at z=0.
+  // We scale by 8x to ensure it covers the edges comfortably with parallax.
+  const DISTANCE_SCALE = 8;
+
   return (
     <Plane
       position={[0, 0, -40]}
-      args={[viewport.width * 7.5, viewport.height * 7.5]}
+      scale={[scaleWidth * DISTANCE_SCALE, scaleHeight * DISTANCE_SCALE, 1]}
     >
       <meshBasicMaterial
         map={texture}
         transparent
-        opacity={0.8}
+        opacity={0.5}
+        depthWrite={false}
         toneMapped={false}
       />
     </Plane>
@@ -37,8 +58,6 @@ function HallOfHumanWriting({ theme }) {
 export default function DystopianSnow({ theme = "teal" }) {
   const ref = useRef();
   const count = 30000;
-
-  // Define the boundary width (matches the random distribution below)
   const xBound = 25;
 
   const [positions, velocities] = useMemo(() => {
@@ -46,11 +65,9 @@ export default function DystopianSnow({ theme = "teal" }) {
     const vel = new Float32Array(count);
 
     for (let i = 0; i < count; i++) {
-      // Range: -25 to +25 on X
       pos[i * 3] = (Math.random() - 0.5) * 50;
       pos[i * 3 + 1] = (Math.random() - 0.5) * 30;
       pos[i * 3 + 2] = (Math.random() - 0.5) * 25;
-
       vel[i] = 0.01 + Math.random() * 0.03;
     }
     return [pos, vel];
@@ -61,28 +78,12 @@ export default function DystopianSnow({ theme = "teal" }) {
     const attr = ref.current.geometry.attributes.position.array;
 
     for (let i = 0; i < count; i++) {
-      // 1. Move Down (Y-Axis)
       attr[i * 3 + 1] -= velocities[i];
-
-      // 2. Move Sideways (X-Axis) - THE ANGLE
-      // We add a portion of the velocity to X to create a diagonal slope.
-      // 0.3 creates a gentle breeze to the right. Change to negative for left.
       attr[i * 3] += velocities[i] * 0.3;
-
-      // 3. Add Wobble (Sine wave)
       attr[i * 3] += Math.sin(state.clock.elapsedTime * 0.5 + i) * 0.002;
 
-      // 4. Reset Height (Y wrap)
-      if (attr[i * 3 + 1] < -15) {
-        attr[i * 3 + 1] = 15;
-      }
-
-      // 5. Reset Width (X wrap)
-      // Since we drift right, we check if it goes past the right boundary
-      // and snap it back to the left boundary.
-      if (attr[i * 3] > xBound) {
-        attr[i * 3] = -xBound;
-      }
+      if (attr[i * 3 + 1] < -15) attr[i * 3 + 1] = 15;
+      if (attr[i * 3] > xBound) attr[i * 3] = -xBound;
     }
     ref.current.geometry.attributes.position.needsUpdate = true;
   });

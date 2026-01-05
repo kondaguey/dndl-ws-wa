@@ -1,11 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Transpiling ensures the editor styles/logic are properly handled by Next.js
+  transpilePackages: ["react-quill-new"],
   images: {
     remotePatterns: [
       {
         protocol: "https",
-        // This is your specific Supabase ID from the error message
         hostname: "gpjgvdpicjqrerqqzhyx.supabase.co",
         port: "",
         pathname: "/storage/v1/object/public/**",

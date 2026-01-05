@@ -514,10 +514,10 @@ export default function SchedulerPage() {
                   </div>
                   <div>
                     <div className="text-sm font-bold text-white">
-                      Neumann TLM 103
+                      TZ Stellar X2
                     </div>
                     <div className="text-[10px] text-slate-400 font-medium">
-                      Industry Standard Microphone
+                      One of the best mics for warm vintage sounds{" "}
                     </div>
                   </div>
                 </div>
@@ -527,10 +527,10 @@ export default function SchedulerPage() {
                   </div>
                   <div>
                     <div className="text-sm font-bold text-white">
-                      UA Apollo Twin X
+                      Focusrite Scarlett Audio Interface{" "}
                     </div>
                     <div className="text-[10px] text-slate-400 font-medium">
-                      High-Fidelity Interface
+                      High-fidelity sound
                     </div>
                   </div>
                 </div>
@@ -540,10 +540,11 @@ export default function SchedulerPage() {
                   </div>
                   <div>
                     <div className="text-sm font-bold text-white">
-                      WhisperRoom™ Booth
+                      SnapStudio® Vocal Booth
                     </div>
                     <div className="text-[10px] text-slate-400 font-medium">
-                      -60dB Noise Floor
+                      Quiet environment x -70dB+ noise floor = elite studio
+                      sound
                     </div>
                   </div>
                 </div>

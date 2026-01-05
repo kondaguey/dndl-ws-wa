@@ -1,16 +1,14 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   1. THEME CONFIGURATION
+   1. THEME CONFIGURATION (Tailwind 4)
    ========================================================================== */
 @theme {
-  /* --- Brand Colors --- */
-  --color-primary: #0d9488; /* Teal 600 */
-  --color-primary-light: #5eead4; /* Teal 300 */
-  --color-primary-dark: #115e59; /* Teal 800 */
-  --color-secondary: #d4a373; /* Earthy Orange */
+  --color-primary: #0d9488;
+  --color-primary-light: #5eead4;
+  --color-primary-dark: #115e59;
+  --color-secondary: #d4a373;
 
-  /* --- Animation Tokens --- */
   --animate-fade-in: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-slide-up: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-gradient-xy: gradient-xy 3s ease infinite;
@@ -18,7 +16,6 @@
   --animate-ticker: ticker 30s linear infinite;
   --animate-glitch: glitch 4000ms infinite;
 
-  /* --- Keyframes --- */
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -67,26 +64,22 @@
     0% {
       text-shadow:
         0.05em 0 0 rgba(255, 0, 81, 0.8),
-        -0.05em -0.025em 0 rgba(0, 255, 225, 0.8),
-        -0.025em 0.05em 0 rgba(255, 255, 0, 0.8);
+        -0.05em -0.025em 0 rgba(0, 255, 225, 0.8);
     }
     15% {
       text-shadow:
         -0.05em -0.025em 0 rgba(255, 0, 81, 0.8),
-        0.025em 0.025em 0 rgba(0, 255, 225, 0.8),
-        -0.05em -0.05em 0 rgba(255, 255, 0, 0.8);
+        0.025em 0.025em 0 rgba(0, 255, 225, 0.8);
     }
     50% {
       text-shadow:
         0.025em 0.05em 0 rgba(255, 0, 81, 0.8),
-        0.05em 0 0 rgba(0, 255, 225, 0.8),
-        0 -0.05em 0 rgba(255, 255, 0, 0.8);
+        0.05em 0 0 rgba(0, 255, 225, 0.8);
     }
     100% {
       text-shadow:
         -0.025em 0 0 rgba(255, 0, 81, 0.8),
-        -0.025em -0.025em 0 rgba(0, 255, 225, 0.8),
-        -0.025em -0.05em 0 rgba(255, 255, 0, 0.8);
+        -0.025em -0.025em 0 rgba(0, 255, 225, 0.8);
     }
   }
 }
@@ -95,31 +88,23 @@
    2. CSS VARIABLES & DARK MODE
    ========================================================================== */
 :root {
-  /* Dynamic Theme Variables (Moved from JSX) */
-  --theme-rgb: 45, 212, 191; /* Default Teal */
+  --theme-rgb: 45, 212, 191;
   --theme-hex: #2dd4bf;
   --toolbar-text: #475569;
   --picker-bg: #fff;
-
-  /* Core Palette */
   --color-primary: #0d9488;
   --color-primary-light: #5eead4;
   --color-primary-dark: #115e59;
   --color-secondary: #d4a373;
   --color-secondary-light: #faedcd;
-
-  /* Surfaces */
   --color-bg: #e2e8f0;
   --color-surface: #f8fafc;
-
-  /* Typography */
   --color-text-main: #1f2937;
   --color-text-muted: #4b5563;
   --nav-height: 80px;
   --radius-lg: 1.5rem;
 }
 
-/* Logic for Yellow Theme */
 .theme-yellow {
   --theme-rgb: 250, 204, 21;
   --theme-hex: #facc15;
@@ -130,7 +115,6 @@
   --theme-hex: #2dd4bf;
   --toolbar-text: var(--theme-hex);
   --picker-bg: #000;
-
   --color-primary: #14b8a6;
   --color-primary-light: #2dd4bf;
   --color-primary-dark: #0f766e;
@@ -141,7 +125,7 @@
 }
 
 /* ==========================================================================
-   3. GLOBAL RESETS
+   3. GLOBAL BASE STYLES
    ========================================================================== */
 @layer base {
   html {
@@ -164,20 +148,36 @@
     font-weight: 900;
     line-height: 1.1;
     letter-spacing: -0.02em;
+    margin-bottom: 0.6em;
+  }
+  h1 {
+    font-size: 2.5rem;
+  }
+  h2 {
+    font-size: 2rem;
+  }
+  h3 {
+    font-size: 1.75rem;
+  }
+  h4 {
+    font-size: 1.5rem;
   }
 }
 
 /* ==========================================================================
-   4. COMPONENT UTILITIES
+   4. COMPONENT UTILITIES (UI, Animations, Neon)
    ========================================================================== */
 @layer components {
   .animate-gradient-x {
     background-size: 200% 200%;
     animation: var(--animate-gradient-x);
   }
-
   .animate-ticker {
     animation: var(--animate-ticker);
+  }
+  .glitch-title {
+    position: relative;
+    animation: var(--animate-glitch);
   }
 
   .glow-heading {
@@ -197,212 +197,14 @@
     @apply border-white/5;
   }
 
-  .text-gradient {
-    background: linear-gradient(
-      135deg,
-      var(--color-primary-dark),
-      var(--color-primary)
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
   .btn-primary {
     @apply relative inline-flex items-center justify-center px-8 py-4 font-black uppercase tracking-wider text-white transition-all duration-300 overflow-hidden rounded-full bg-[var(--color-text-main)];
   }
-
   .card-modern {
     @apply relative overflow-hidden transition-all duration-500 ease-out bg-[var(--color-surface)];
     border-radius: var(--radius-lg);
     box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
     border: 1px solid rgba(0, 0, 0, 0.05);
-  }
-
-  /* --- Blog Typography System --- */
-  .blog-content {
-    color: #334155;
-    line-height: 1.8;
-    font-size: 1.125rem;
-  }
-  .blog-content > * + * {
-    margin-top: 1.5em;
-  }
-  .blog-content h2 {
-    font-size: 1.875rem;
-    font-weight: 900;
-    color: #0f172a;
-    margin-top: 3.5rem;
-    margin-bottom: 1.5rem;
-    letter-spacing: -0.025em;
-    line-height: 1.2;
-  }
-  .blog-content h3 {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: #1e293b;
-    margin-top: 2.5rem;
-    margin-bottom: 1rem;
-  }
-  .blog-content p {
-    margin-bottom: 2rem;
-  }
-
-  .blog-content ul {
-    list-style: none !important;
-    margin: 2rem 0;
-    padding-left: 0;
-  }
-  .blog-content li {
-    position: relative;
-    padding-left: 2rem;
-    margin-bottom: 1rem;
-  }
-  .blog-content li::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 11px;
-    width: 8px;
-    height: 8px;
-    background-color: #14b8a6;
-    border-radius: 50%;
-    box-shadow:
-      0 0 10px #14b8a6,
-      0 0 20px rgba(20, 184, 166, 0.4);
-    transition: transform 0.3s ease;
-  }
-  .blog-content li:hover::before {
-    transform: scale(1.5);
-    box-shadow:
-      0 0 15px #14b8a6,
-      0 0 30px rgba(20, 184, 166, 0.6);
-  }
-
-  /* ==========================================================================
-     NEW: EDITOR & NEON STYLES (INTEGRATED FROM JSX)
-     ========================================================================== */
-
-  #toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    border: none !important;
-  }
-
-  #toolbar button,
-  #toolbar .ql-picker-label {
-    color: var(--toolbar-text) !important;
-    margin-right: 0.5rem;
-    transition: all 0.2s;
-  }
-
-  #toolbar button:hover,
-  #toolbar .ql-picker-label:hover {
-    opacity: 1;
-    transform: scale(1.1);
-  }
-
-  #toolbar .ql-active,
-  #toolbar .ql-picker-label.ql-active {
-    filter: drop-shadow(0 0 5px var(--theme-hex));
-    font-weight: bold;
-  }
-
-  #toolbar .ql-stroke {
-    stroke: var(--toolbar-text) !important;
-  }
-  #toolbar .ql-fill {
-    fill: var(--toolbar-text) !important;
-  }
-
-  .ql-container {
-    font-family: var(--font-nunito);
-    border: none !important;
-    height: 100% !important;
-    overflow-y: auto;
-  }
-
-  .ql-editor {
-    font-size: 1.15rem !important;
-    line-height: 1.8 !important;
-    min-height: 100%;
-    padding-bottom: 5rem !important;
-  }
-
-  .ql-editor h1 {
-    font-size: 2.5em !important;
-    font-weight: 900 !important;
-    margin-top: 1em;
-    margin-bottom: 0.5em;
-    line-height: 1.1;
-  }
-  .ql-editor h2 {
-    font-size: 2em !important;
-    font-weight: 800 !important;
-    margin-top: 1em;
-    margin-bottom: 0.5em;
-  }
-  .ql-editor h3 {
-    font-size: 1.5em !important;
-    font-weight: 800 !important;
-    margin-top: 1em;
-    margin-bottom: 0.5em;
-  }
-  .ql-editor h4 {
-    font-size: 1.25em !important;
-    font-weight: 700 !important;
-    margin-top: 1em;
-    margin-bottom: 0.5em;
-  }
-  .ql-editor p {
-    margin-bottom: 1em !important;
-  }
-
-  /* Editor Scrollbar */
-  .ql-editor::-webkit-scrollbar {
-    width: 8px;
-  }
-  .ql-editor::-webkit-scrollbar-thumb {
-    background-color: var(--theme-hex);
-    border-radius: 4px;
-  }
-  .ql-editor::-webkit-scrollbar-track {
-    background-color: rgba(0, 0, 0, 0.1);
-  }
-
-  /* Quill Dark/Light Variants */
-  .dark-quill .ql-editor {
-    color: rgba(var(--theme-rgb), 0.9) !important;
-    text-shadow: 0 0 10px rgba(var(--theme-rgb), 0.2);
-  }
-  .dark-quill .ql-editor.ql-blank::before {
-    color: rgba(var(--theme-rgb), 0.4) !important;
-    font-style: italic;
-  }
-
-  .light-quill .ql-editor {
-    color: #1e293b;
-  }
-  .light-quill .ql-editor.ql-blank::before {
-    color: #94a3b8 !important;
-  }
-
-  /* Theme Inputs */
-  .theme-input {
-    color: rgba(var(--theme-rgb), 0.9) !important;
-    text-shadow: 0 0 10px rgba(var(--theme-rgb), 0.4);
-  }
-  .theme-input::placeholder {
-    color: rgba(var(--theme-rgb), 0.5) !important;
-    text-shadow: none;
-  }
-
-  .ql-picker-options {
-    background-color: var(--picker-bg) !important;
-    border: 1px solid var(--theme-hex) !important;
-    z-index: 9999 !important;
-    padding: 10px !important;
   }
 
   /* Neon Effects */
@@ -414,51 +216,124 @@
       0 0 30px rgba(var(--theme-rgb), 1),
       0 0 60px rgba(var(--theme-rgb), 0.6);
   }
-
-  .shadow-neon-md {
-    box-shadow: 0 0 30px rgba(var(--theme-rgb), 0.5);
-  }
-  .shadow-neon-field {
-    box-shadow:
-      0 0 30px rgba(var(--theme-rgb), 0.4),
-      inset 0 0 15px rgba(var(--theme-rgb), 0.1);
-  }
   .shadow-neon-ultra {
     box-shadow:
       0 0 60px rgba(var(--theme-rgb), 0.8),
       inset 0 0 25px rgba(var(--theme-rgb), 0.4);
-  }
-  .shadow-neon-box-intense {
-    box-shadow:
-      0 0 80px rgba(var(--theme-rgb), 0.15),
-      inset 0 0 30px rgba(var(--theme-rgb), 0.05);
   }
   .shadow-neon-box-ultra {
     box-shadow:
       0 0 130px rgba(var(--theme-rgb), 0.25),
       inset 0 0 40px rgba(var(--theme-rgb), 0.1);
   }
-  .shadow-neon-inner-intense {
-    box-shadow: inset 0 0 60px rgba(var(--theme-rgb), 0.2);
+}
+
+/* ==========================================================================
+   5. EDITOR OVERRIDES & QUILL ENGINE
+   ========================================================================== */
+@layer components {
+  #toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    border: none !important;
+  }
+  #toolbar button,
+  #toolbar .ql-picker-label {
+    color: var(--toolbar-text) !important;
+    margin-right: 0.5rem;
+    transition: all 0.2s;
+  }
+  #toolbar button:hover {
+    transform: scale(1.1);
+  }
+  #toolbar .ql-stroke {
+    stroke: var(--toolbar-text) !important;
+  }
+  #toolbar .ql-fill {
+    fill: var(--toolbar-text) !important;
   }
 
-  .glitch-title {
-    position: relative;
-    animation: var(--animate-glitch);
+  .ql-container {
+    font-family: var(--font-nunito);
+    border: none !important;
+    height: 100% !important;
+  }
+  .ql-editor {
+    font-size: 1.15rem !important;
+    line-height: 1.8 !important;
+    min-height: 100%;
+    padding-bottom: 5rem !important;
   }
 
-  /* Image Engine */
+  /* KILLING TAILWIND 4 PREFLIGHT IN EDITOR */
+  .ql-editor :where(h1, h2, h3, h4) {
+    all: revert !important;
+    display: block !important;
+    font-weight: 900 !important;
+    margin-bottom: 0.5rem !important;
+    line-height: 1.2 !important;
+    font-family: inherit !important;
+  }
+
+  /* EDITOR SIZES (High Specificity) */
+  .ql-container.ql-snow .ql-editor h1 {
+    font-size: 2.5rem !important;
+    margin-top: 1.5rem !important;
+  }
+  .ql-container.ql-snow .ql-editor h2 {
+    font-size: 2rem !important;
+    margin-top: 1.25rem !important;
+  }
+  .ql-container.ql-snow .ql-editor h3 {
+    font-size: 1.75rem !important;
+  }
+  .ql-container.ql-snow .ql-editor h4 {
+    font-size: 1.5rem !important;
+  }
+  .ql-container.ql-snow .ql-editor p {
+    margin-bottom: 1.25rem !important;
+    font-size: 1.15rem !important;
+    line-height: 1.8 !important;
+  }
+
+  /* THEME VARIANTS */
+  .dark-quill .ql-editor {
+    color: rgba(var(--theme-rgb), 0.9) !important;
+    text-shadow: 0 0 10px rgba(var(--theme-rgb), 0.2);
+  }
+  .dark .ql-editor :is(h1, h2, h3, h4) {
+    color: white !important;
+  }
+  .dark .ql-editor h2 {
+    color: var(--theme-hex) !important;
+  }
+
+  .light-quill .ql-editor {
+    color: #1e293b;
+  }
+  .theme-input {
+    color: rgba(var(--theme-rgb), 0.9) !important;
+    text-shadow: 0 0 10px rgba(var(--theme-rgb), 0.4);
+  }
+
+  .ql-picker-options {
+    background-color: var(--picker-bg) !important;
+    border: 1px solid var(--theme-hex) !important;
+    z-index: 9999 !important;
+    padding: 10px !important;
+  }
+}
+
+/* ==========================================================================
+   6. IMAGE ENGINE & BLOG FRONTEND
+   ========================================================================== */
+@layer components {
   .blog-content img {
     border-radius: 1rem;
     box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.15);
-    height: auto;
-    display: block;
-    width: 100%;
     margin: 2rem 0;
     transition: transform 0.3s ease;
-  }
-  .blog-content img:hover {
-    transform: scale(1.01);
   }
   .blog-content figcaption {
     text-align: center;
@@ -499,23 +374,57 @@
       margin-right: auto;
       display: block;
     }
-    img.blog-display-inline {
-      display: inline-block;
-      vertical-align: top;
-      float: none;
-      margin: 1%;
-    }
   }
 
-  .blog-content::after {
+  .blog-content {
+    color: #334155;
+    line-height: 1.8;
+    font-size: 1.125rem;
+  }
+  .blog-content h2 {
+    font-size: 1.875rem;
+    font-weight: 900;
+    color: #0f172a;
+    margin-top: 3.5rem;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+  }
+  .blog-content h3 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+  }
+  .blog-content ul {
+    list-style: none !important;
+    margin: 2rem 0;
+    padding-left: 0;
+  }
+  .blog-content li {
+    position: relative;
+    padding-left: 2rem;
+    margin-bottom: 1rem;
+  }
+  .blog-content li::before {
     content: "";
-    display: table;
-    clear: both;
+    position: absolute;
+    left: 0;
+    top: 11px;
+    width: 8px;
+    height: 8px;
+    background-color: #14b8a6;
+    border-radius: 50%;
+    box-shadow:
+      0 0 10px #14b8a6,
+      0 0 20px rgba(20, 184, 166, 0.4);
+    transition: transform 0.3s ease;
   }
 }
 
 /* ==========================================================================
-   5. COMPLEX ANIMATIONS (MAIL & LINKS)
+   7. MAIL ANIMATION
    ========================================================================== */
 @layer components {
   .letter-image {
@@ -589,53 +498,6 @@
     align-items: center;
     justify-content: center;
   }
-  .letter-border {
-    width: 100%;
-    height: 10px;
-    background: repeating-linear-gradient(
-      -45deg,
-      var(--color-secondary),
-      var(--color-secondary) 8px,
-      transparent 8px,
-      transparent 18px
-    );
-    margin-bottom: auto;
-  }
-  .letter-title,
-  .letter-context {
-    width: 40%;
-    height: 10px;
-    background-color: #d1d5db;
-    margin-top: 10px;
-    border-radius: 99px;
-  }
-  .letter-context {
-    width: 20%;
-  }
-  .letter-email {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 0.875rem;
-    font-weight: bold;
-    color: #1f2937;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    white-space: nowrap;
-  }
-  .shadow {
-    position: absolute;
-    top: 200px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 400px;
-    height: 30px;
-    border-radius: 100%;
-    background: radial-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0));
-    transition: all 0.5s ease;
-  }
-
   .letter-image:hover .animated-mail {
     transform: translate(-50%, -80px);
   }
@@ -648,13 +510,12 @@
     bottom: 20px;
     z-index: 2;
   }
-  .letter-image:hover .letter-email {
-    opacity: 1;
-  }
-  .letter-image:hover .shadow {
-    width: 250px;
-  }
 
+  .wave-char {
+    display: inline-block;
+    animation: wavy-color-jump 6s ease-in-out infinite;
+    will-change: transform, color;
+  }
   @keyframes wavy-color-jump {
     0%,
     100% {
@@ -673,27 +534,5 @@
       transform: translateY(-3px);
       color: #2dd4bf;
     }
-  }
-  .wave-char {
-    display: inline-block;
-    animation: wavy-color-jump 6s ease-in-out infinite;
-    will-change: transform, color;
-  }
-
-  @keyframes magnifying-pulse {
-    0%,
-    100% {
-      transform: scale(1);
-      color: currentColor;
-    }
-    50% {
-      transform: scale(1.15);
-      color: #0d9488;
-    }
-  }
-  .animate-magnify {
-    transform-origin: center center;
-    animation: magnifying-pulse 3s ease-in-out infinite;
-    will-change: transform, color;
   }
 }
