@@ -1,30 +1,31 @@
-"use client";
-
 import Link from "next/link";
-import Image from "next/image";
-import { useState, useEffect } from "react";
-import { Tag, Calendar, Feather, ArrowRight, Clock, Eye } from "lucide-react";
-import { createClient } from "@/src/utils/supabase/client";
+import { Feather } from "lucide-react";
+import { createClient } from "@/src/utils/supabase/server"; // Use Server Client
 import BlogCard from "@/src/components/marketing/BlogCard";
 
-export default function BlogIndexPage() {
-  const [posts, setPosts] = useState([]);
+// 1. DEFINE METADATA (The Fix for your SEO Score)
+export const metadata = {
+  title: "Blog | Daniel Lewis",
+  description:
+    "Lessons from exploring the alternatives space. 100% human-written thoughts on travel, acting, and tech.",
+  openGraph: {
+    title: "Blog | Daniel Lewis",
+    description: "Lessons from exploring the alternatives space.",
+    type: "website",
+  },
+};
 
-  useEffect(() => {
-    const fetchPosts = async () => {
-      const supabase = createClient();
+// 2. SERVER COMPONENT (Async)
+export default async function BlogIndexPage() {
+  // 3. FETCH ON SERVER (Faster & Better for Crawlers)
+  const supabase = await createClient();
 
-      const { data, error } = await supabase
-        .from("posts")
-        .select("*")
-        .eq("published", true)
-        .order("views", { ascending: false }); // Sorts by popularity
-      //.order("created_at", { ascending: false }) // Secondary sort if views are equal
-
-      if (data) setPosts(data);
-    };
-    fetchPosts();
-  }, []);
+  const { data: posts } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("published", true)
+    .order("views", { ascending: false });
+  //.order("created_at", { ascending: false }); // Secondary sort
 
   return (
     <div className="pt-24 md:pt-40 relative min-h-screen w-full bg-slate-50 pb-24 px-4 overflow-hidden">
@@ -55,22 +56,16 @@ export default function BlogIndexPage() {
 
         {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-2 md:px-0">
-          {posts.map((post, index) => (
+          {posts?.map((post, index) => (
             <BlogCard key={post.slug} post={post} delay={index * 0.1} />
           ))}
+          {!posts?.length && (
+            <p className="col-span-full text-center text-slate-400">
+              No posts found.
+            </p>
+          )}
         </div>
       </div>
-
-      <style jsx global>{`
-        @keyframes border-spin {
-          100% {
-            transform: rotate(-360deg);
-          }
-        }
-        .animate-border-spin {
-          animation: border-spin 3s linear infinite;
-        }
-      `}</style>
     </div>
   );
 }

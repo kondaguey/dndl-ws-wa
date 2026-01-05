@@ -6,16 +6,17 @@ import { useRouter, usePathname } from "next/navigation";
 import { Menu, X, ArrowRight, Mic, Plane } from "lucide-react";
 import { createClient } from "../../utils/supabase/client";
 
+// --- GREETINGS ARRAY (Static) ---
+const greetings = [
+  "Welcome, traveler",
+  "환영합니다, 여행자여",
+  "Benvenuto, viaggiatore",
+  "欢迎，旅行者",
+  "Bienvenido, viajero",
+];
+
 // --- TICKER COMPONENT ---
 function GreetingTicker({ scrolled }) {
-  const greetings = [
-    "Welcome, traveler",
-    "환영합니다, 여행자여",
-    "Benvenuto, viaggiatore",
-    "欢迎，旅行者",
-    "Bienvenido, viajero",
-  ];
-
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -23,21 +24,18 @@ function GreetingTicker({ scrolled }) {
       setIndex((prev) => (prev + 1) % greetings.length);
     }, 2500);
     return () => clearInterval(interval);
-  }, [greetings.length]);
+  }, []); // Empty dependency array is safe now
 
   return (
     <div className="flex items-center gap-2 h-full">
       <div
-        className="text-[var(--color-primary)] block"
+        className="text-teal-600 block"
         style={{ animation: "plane-float 3s ease-in-out infinite" }}
       >
-        <Plane
-          size={16}
-          className="fill-[var(--color-primary)]/20 stroke-[2px]"
-        />
+        <Plane size={16} className="fill-teal-600/20 stroke-[2px]" />
       </div>
 
-      <div className="relative h-5 overflow-hidden text-left border-l-2 border-[var(--color-primary)]/30 pl-3 w-48 md:w-64 transition-colors duration-300">
+      <div className="relative h-5 overflow-hidden text-left border-l-2 border-teal-600/30 pl-3 w-48 md:w-64 transition-colors duration-300">
         <div
           className="transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
           style={{ transform: `translateY(-${index * 20}px)` }}
@@ -45,7 +43,7 @@ function GreetingTicker({ scrolled }) {
           {greetings.map((text, i) => (
             <div
               key={i}
-              className="h-5 flex items-center font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)] text-[10px] md:text-xs whitespace-nowrap"
+              className="h-5 flex items-center font-mono font-bold uppercase tracking-widest text-slate-500 text-[10px] md:text-xs whitespace-nowrap"
             >
               {text}
             </div>
@@ -95,11 +93,7 @@ const AudiobookButton = ({ mobile = false, onClick }) => (
     className={`
       relative group overflow-hidden rounded-full 
       transition-all duration-300 hover:scale-105 hover:shadow-[0_0_20px_rgba(20,184,166,0.5)]
-      ${
-        mobile
-          ? "w-full max-w-xs py-4 text-center mt-4 flex-shrink-0 whitespace-nowrap"
-          : "px-5 py-2 hidden lg:block"
-      }
+      ${mobile ? "w-full max-w-xs py-4 text-center mt-4 flex-shrink-0 whitespace-nowrap" : "px-5 py-2 hidden lg:block"}
     `}
   >
     <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-teal-400 via-indigo-500 to-blue-600 bg-[length:200%_auto] animate-gradient-xy" />
@@ -114,7 +108,7 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  // --- SEARCH STATE (Kept for Desktop Only) ---
+  // --- SEARCH STATE ---
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -129,6 +123,7 @@ export default function Navbar() {
     setQuery("");
   }, [pathname]);
 
+  // Lock body scroll when mobile menu is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -140,6 +135,7 @@ export default function Navbar() {
     };
   }, [isOpen]);
 
+  // Fetch content for search
   useEffect(() => {
     const fetchSearchData = async () => {
       const staticPages = [
@@ -170,12 +166,14 @@ export default function Navbar() {
     fetchSearchData();
   }, []);
 
+  // Handle Scroll
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Filter Search Results
   useEffect(() => {
     if (query.length > 0 && allContent.length > 0) {
       const lowerQuery = query.toLowerCase();
@@ -190,6 +188,7 @@ export default function Navbar() {
     }
   }, [query, allContent]);
 
+  // Click Outside to Close Search
   useEffect(() => {
     function handleClickOutside(event) {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -237,12 +236,7 @@ export default function Navbar() {
           {/* --- LEFT: LOGO & TICKER --- */}
           <div className="flex items-center gap-4 md:gap-8">
             <Link href="/" className="relative z-50 flex items-center group">
-              <h1
-                className="font-black tracking-tighter leading-none text-lg md:text-xl lg:text-2xl 
-  transition-transform duration-300 group-hover:scale-[1.02]
-  text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-teal-400 to-indigo-500 
-  animate-gradient-x drop-shadow-sm"
-              >
+              <h1 className="font-black tracking-tighter leading-none text-lg md:text-xl lg:text-2xl transition-transform duration-300 group-hover:scale-[1.02] text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-teal-400 to-indigo-500 animate-gradient-x drop-shadow-sm">
                 <span className="md:hidden font-extrabold">D(nD)L</span>
                 <span className="hidden md:inline pr-1">
                   Daniel (not Day) Lewis
@@ -286,6 +280,7 @@ export default function Navbar() {
               >
                 <button
                   type="button"
+                  aria-label="Open search"
                   onClick={() => setIsSearchOpen(!isSearchOpen)}
                   className="focus:outline-none text-slate-500 hover:text-teal-600 transition-colors"
                 >
@@ -302,16 +297,13 @@ export default function Navbar() {
                   onFocus={() => setIsSearchOpen(true)}
                   placeholder="SEARCH"
                   className={`bg-transparent text-base md:text-xs font-bold uppercase tracking-wider outline-none placeholder:text-slate-400 transition-all duration-300 
-                    ${
-                      isSearchOpen
-                        ? "w-32 md:w-40 opacity-100 text-slate-800 pl-1"
-                        : "w-0 opacity-0"
-                    }`}
+                    ${isSearchOpen ? "w-32 md:w-40 opacity-100 text-slate-800 pl-1" : "w-0 opacity-0"}`}
                 />
 
                 {isSearchOpen && (
                   <button
                     type="button"
+                    aria-label="Close search"
                     onClick={() => {
                       setQuery("");
                       setResults([]);
@@ -369,6 +361,7 @@ export default function Navbar() {
             {/* MOBILE HAMBURGER */}
             <button
               className="md:hidden p-2 text-slate-800"
+              aria-label="Open menu"
               onClick={() => setIsOpen(true)}
             >
               <Menu size={24} />
@@ -380,15 +373,12 @@ export default function Navbar() {
       {/* --- MOBILE FULLSCREEN MENU --- */}
       <div
         className={`fixed inset-0 z-[60] bg-white/95 backdrop-blur-xl transition-all duration-300
-        ${
-          isOpen
-            ? "opacity-100 visible"
-            : "opacity-0 invisible pointer-events-none"
-        }`}
+        ${isOpen ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"}`}
       >
         <div className="w-full h-full overflow-y-auto flex flex-col items-center pt-24 pb-12 px-6 gap-8">
           <button
             onClick={() => setIsOpen(false)}
+            aria-label="Close menu"
             className="absolute top-6 right-6 group p-3 rounded-full bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-teal-100 transition-all duration-300 z-50"
           >
             <X
@@ -397,12 +387,11 @@ export default function Navbar() {
             />
           </button>
 
-          {/* SEARCH REMOVED AS REQUESTED */}
-
           {navLinks.map((link) => (
             <Link
               key={link.name}
               href={link.href}
+              onClick={() => setIsOpen(false)}
               className="text-3xl font-black uppercase tracking-tighter text-slate-900 hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-teal-400 hover:to-indigo-500 transition-all"
             >
               {link.name}
