@@ -6,17 +6,39 @@ import {
   Check,
   Settings2,
   Video,
-  Music, // Audio Icon
+  Music,
+  Image as ImageIcon,
+  Grid,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from "lucide-react";
 
 export default function VibeImageStudio({
   isOpen,
   onClose,
-  imageUrl, // FIXED: Changed from 'activeImage' to match parent
+  imageUrl,
   availableImages = [],
   onGenerateCode,
+  initialTab = "layout",
 }) {
-  const [activeTab, setActiveTab] = useState("layout");
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Auto-detect content type to switch tabs automatically
+  useEffect(() => {
+    if (isOpen && imageUrl) {
+      if (imageUrl.includes("youtube") || imageUrl.includes("vimeo")) {
+        setActiveTab("video");
+        setVideoUrl(imageUrl);
+      } else if (imageUrl.includes("spotify")) {
+        setActiveTab("audio");
+        setAudioUrl(imageUrl);
+      } else {
+        // It's an image, default to layout or what was passed
+        setActiveTab(initialTab);
+      }
+    }
+  }, [isOpen, imageUrl, initialTab]);
 
   const [layout, setLayout] = useState({
     size: "large",
@@ -28,9 +50,14 @@ export default function VibeImageStudio({
   const [videoUrl, setVideoUrl] = useState("");
   const [audioUrl, setAudioUrl] = useState("");
 
-  // Initialize Gallery with the current active image
+  // When opening in gallery mode, try to use the current image as first selection
   useEffect(() => {
-    if (isOpen && imageUrl) {
+    if (
+      isOpen &&
+      imageUrl &&
+      !imageUrl.includes("youtube") &&
+      !imageUrl.includes("spotify")
+    ) {
       setSelectedGalleryImages([imageUrl]);
     }
   }, [isOpen, imageUrl]);
@@ -52,10 +79,10 @@ export default function VibeImageStudio({
   };
 
   const getSpotifyEmbed = (url) => {
+    if (url.includes("/embed")) return url;
     if (url.includes("open.spotify.com")) {
-      // Convert standard link to embed
-      // https://open.spotify.com/track/xyz -> https://open.spotify.com/embed/track/xyz
-      return url.replace("open.spotify.com/", "open.spotify.com/embed/");
+      const parts = url.split(".com/");
+      return `https://open.spotify.com/embed/${parts[1]}`;
     }
     return url;
   };
@@ -74,7 +101,6 @@ export default function VibeImageStudio({
     }
   };
 
-  // --- GENERATORS ---
   const generateCode = () => {
     if (activeTab === "audio") {
       if (!audioUrl) return alert("Please enter an audio URL");
@@ -95,7 +121,6 @@ export default function VibeImageStudio({
       code += "]]";
       return onGenerateCode(code);
     } else {
-      // SINGLE IMAGE
       let code = `[[image:${imageUrl}`;
       code += `|size=${layout.size}`;
       code += `|align=${layout.align}`;
@@ -105,10 +130,15 @@ export default function VibeImageStudio({
     }
   };
 
+  const isMedia =
+    imageUrl &&
+    (imageUrl.includes("youtube") ||
+      imageUrl.includes("vimeo") ||
+      imageUrl.includes("spotify"));
+
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-200 p-4">
+    <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-200 p-4">
       <div className="w-[800px] h-[90vh] max-h-[900px] bg-[#0f172a] border border-teal-500/30 rounded-2xl flex flex-col overflow-hidden shadow-2xl relative">
-        {/* HEADER */}
         <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 pointer-events-none">
           <div className="bg-black/50 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 pointer-events-auto">
             <h3 className="font-black uppercase tracking-widest text-teal-400 text-xs flex items-center gap-2">
@@ -123,25 +153,25 @@ export default function VibeImageStudio({
           </button>
         </div>
 
-        {/* --- TOP: PREVIEW AREA (60%) --- */}
         <div className="h-[60%] bg-[#02020a] relative flex items-center justify-center p-8 overflow-hidden border-b border-white/10">
           <div
-            className={`transition-all duration-500 flex gap-4 ${
-              activeTab === "layout" && layout.size === "small"
-                ? "w-1/3"
-                : activeTab === "layout" && layout.size === "medium"
-                  ? "w-1/2"
-                  : activeTab === "layout" && layout.size === "large"
-                    ? "w-2/3"
-                    : "w-full max-w-3xl"
-            }`}
+            className={`transition-all duration-500 flex gap-4 ${activeTab === "layout" && layout.size === "small" ? "w-1/3" : activeTab === "layout" && layout.size === "medium" ? "w-1/2" : activeTab === "layout" && layout.size === "large" ? "w-2/3" : "w-full max-w-3xl"}`}
           >
-            {activeTab === "layout" && (
+            {activeTab === "layout" && imageUrl && !isMedia && (
               <img
                 src={imageUrl}
                 className="w-full h-auto max-h-[50vh] object-cover rounded-lg shadow-2xl border border-white/10"
                 alt="Preview"
               />
+            )}
+
+            {activeTab === "layout" && (!imageUrl || isMedia) && (
+              <div className="w-full h-64 flex flex-col items-center justify-center text-slate-500 border border-white/10 rounded-lg bg-white/5">
+                <ImageIcon size={48} className="mb-4 opacity-50" />
+                <span className="text-xs uppercase font-bold tracking-widest">
+                  {isMedia ? "Switch to Video/Audio Tab" : "No Image Selected"}
+                </span>
+              </div>
             )}
 
             {activeTab === "gallery" && (
@@ -224,11 +254,9 @@ export default function VibeImageStudio({
           )}
         </div>
 
-        {/* --- BOTTOM: CONTROLS (40%) --- */}
         <div className="h-[40%] bg-[#0f172a] flex flex-col">
           <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* COL 1: MODE */}
               <div className="space-y-6">
                 <div>
                   <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block tracking-widest">
@@ -248,7 +276,6 @@ export default function VibeImageStudio({
                     ))}
                   </div>
                 </div>
-
                 {activeTab === "layout" && (
                   <div>
                     <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block tracking-widest">
@@ -266,9 +293,7 @@ export default function VibeImageStudio({
                 )}
               </div>
 
-              {/* COL 2: CONTEXTUAL CONTROLS */}
               <div className="space-y-6">
-                {/* SINGLE */}
                 {activeTab === "layout" && (
                   <>
                     <div>
@@ -308,15 +333,21 @@ export default function VibeImageStudio({
                   </>
                 )}
 
-                {/* GALLERY */}
                 {activeTab === "gallery" && (
                   <div>
                     <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block tracking-widest">
                       Select Images (2-3)
                     </label>
                     <div className="grid grid-cols-4 gap-2 h-32 overflow-y-auto custom-scrollbar pr-2">
-                      {availableImages.filter(Boolean).length > 0 ? (
-                        availableImages.filter(Boolean).map((url, i) => (
+                      {availableImages
+                        .filter(Boolean)
+                        .filter(
+                          (u) =>
+                            !u.includes("youtube") &&
+                            !u.includes("vimeo") &&
+                            !u.includes("spotify")
+                        )
+                        .map((url, i) => (
                           <button
                             key={i}
                             onClick={() => toggleGalleryImage(url)}
@@ -335,17 +366,11 @@ export default function VibeImageStudio({
                               </div>
                             )}
                           </button>
-                        ))
-                      ) : (
-                        <p className="col-span-4 text-[10px] text-slate-500 italic text-center py-4">
-                          No other images found. Upload more in the sidebar.
-                        </p>
-                      )}
+                        ))}
                     </div>
                   </div>
                 )}
 
-                {/* VIDEO */}
                 {activeTab === "video" && (
                   <div>
                     <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block tracking-widest">
@@ -360,7 +385,6 @@ export default function VibeImageStudio({
                   </div>
                 )}
 
-                {/* AUDIO */}
                 {activeTab === "audio" && (
                   <div>
                     <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block tracking-widest">
@@ -372,9 +396,6 @@ export default function VibeImageStudio({
                       placeholder="https://open.spotify.com/track/..."
                       className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-xs text-white focus:border-teal-500 outline-none transition-colors"
                     />
-                    <p className="text-[10px] text-slate-500 mt-2 italic">
-                      Works with Supabase files & Spotify links.
-                    </p>
                   </div>
                 )}
               </div>

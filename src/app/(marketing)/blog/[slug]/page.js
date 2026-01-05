@@ -88,8 +88,8 @@ const contentParserOptions = {
           }
 
           return (
-            <figure className="my-10 w-full md:w-2/3 mx-auto clear-both">
-              <div className="relative aspect-video rounded-xl overflow-hidden shadow-2xl bg-black border border-teal-500/20">
+            <figure className="my-10 w-full md:w-2/3 mx-auto clear-both !block">
+              <div className="relative aspect-video rounded-xl overflow-hidden shadow-2xl bg-black border border-teal-500/20 !w-full">
                 <iframe
                   src={embedUrl}
                   className="absolute inset-0 w-full h-full"
@@ -107,17 +107,14 @@ const contentParserOptions = {
           const rawUrl = innerContent.replace("audio:", "").trim();
 
           // Spotify Embed
-          if (rawUrl.includes("open.spotify.com")) {
-            // Convert standard link to embed link if needed, or assume embed code logic
-            // Simple approach: trust the iframe src logic or transform if needed
-            // e.g. open.spotify.com/track/XYZ -> open.spotify.com/embed/track/XYZ
+          if (rawUrl.includes("spotify.com")) {
             let embedUrl = rawUrl;
             if (!rawUrl.includes("/embed/")) {
               embedUrl = rawUrl.replace(".com/", ".com/embed/");
             }
 
             return (
-              <figure className="my-8 w-full md:w-2/3 mx-auto clear-both">
+              <figure className="my-8 w-full md:w-2/3 mx-auto clear-both !block">
                 <iframe
                   style={{ borderRadius: "12px" }}
                   src={embedUrl}
@@ -134,7 +131,7 @@ const contentParserOptions = {
 
           // Native Audio (Supabase/MP3)
           return (
-            <figure className="my-8 w-full md:w-2/3 mx-auto clear-both">
+            <figure className="my-8 w-full md:w-2/3 mx-auto clear-both !block">
               <audio
                 controls
                 className="w-full border border-teal-500/20 rounded-full bg-slate-100 dark:bg-slate-900"
@@ -162,10 +159,9 @@ const contentParserOptions = {
           const gridCols = type === "duo" ? "md:grid-cols-2" : "md:grid-cols-3";
 
           return (
-            <figure className="my-10 w-full clear-both">
+            <figure className="my-10 w-full clear-both !block">
               <div className={`grid grid-cols-1 ${gridCols} gap-4`}>
                 {urls.map((u, i) => (
-                  // FIXED: aspect-[2/3] for vertical rigid look, block class for spacing
                   <div
                     key={i}
                     className="rounded-xl overflow-hidden shadow-lg relative aspect-[2/3] bg-gray-100"
@@ -193,7 +189,7 @@ const contentParserOptions = {
           const parts = innerContent.replace("image:", "").split("|");
           let url = parts[0].trim();
           let sizeClass = "w-full md:w-2/3";
-          let alignClass = "mx-auto";
+          let alignClass = "!block mx-auto"; // Default block
           let caption = null;
 
           parts.slice(1).forEach((part) => {
@@ -205,11 +201,12 @@ const contentParserOptions = {
               if (val === "full") sizeClass = "w-full";
             }
             if (key === "align") {
+              // FIX: FORCE !block AND CLEARANCE
               if (val === "left")
-                alignClass = "float-left mr-8 mb-4 clear-left";
+                alignClass = "!block float-left mr-8 mb-4 clear-left";
               if (val === "right")
-                alignClass = "float-right ml-8 mb-4 clear-right";
-              if (val === "center") alignClass = "mx-auto block clear-both";
+                alignClass = "!block float-right ml-8 mb-4 clear-right";
+              if (val === "center") alignClass = "!block mx-auto clear-both";
             }
             if (key === "caption") {
               if (val.length > 0) caption = val;
@@ -220,7 +217,8 @@ const contentParserOptions = {
             <figure
               className={`my-8 group relative ${alignClass} ${sizeClass}`}
             >
-              <div className="rounded-xl overflow-hidden shadow-2xl leading-none">
+              {/* FIX: FORCE WIDTH FULL ON WRAPPER TO FILL FIGURE */}
+              <div className="rounded-xl overflow-hidden shadow-2xl leading-none !w-full">
                 <img
                   src={url}
                   alt={caption || "blog"}
@@ -332,7 +330,6 @@ export default async function BlogPost({ params }) {
 
       {/* --- MAIN CONTENT WITH PARSER --- */}
       <article className="max-w-4xl mx-auto px-4 md:px-6 py-4 md:py-8 animate-fade-in">
-        {/* ADDED flow-root HERE: This forces the div to contain all floated children */}
         <div className="blog-content flow-root prose prose-lg prose-slate max-w-none mx-auto prose-img:rounded-xl prose-headings:text-teal-900 prose-a:text-indigo-600">
           {post.content ? (
             parse(post.content, contentParserOptions)
@@ -345,7 +342,6 @@ export default async function BlogPost({ params }) {
       </article>
 
       {/* --- POPULAR POSTS WIDGET --- */}
-      {/* ADDED clear-both HERE: Forces this widget to start below any floated images */}
       <div className="w-full px-4 md:px-6 py-16 clear-both">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center gap-4 mb-12">
