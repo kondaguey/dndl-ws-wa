@@ -124,8 +124,14 @@
   --color-text-muted: #9ca3af;
 }
 
+@import "tailwindcss";
+
+/* ... (Keep your @theme configuration exactly as is) ... */
+
+/* ... (Keep your :root and .dark variables exactly as is) ... */
+
 /* ==========================================================================
-   3. GLOBAL BASE STYLES
+   3. GLOBAL BASE STYLES - FIXED FOR MOBILE PERFORMANCE
    ========================================================================== */
 @layer base {
   html {
@@ -135,10 +141,20 @@
     background-color: transparent;
     color: var(--color-text-main);
     font-family: "Nunito Sans", sans-serif;
-    transition:
-      background-color 0.3s ease,
-      color 0.3s ease;
+
+    /* 🚨 MOBILE DEFAULT: No transition, static background interaction */
+    transition: none;
   }
+
+  /* 🚨 DESKTOP ONLY: Apply the smooth transition here */
+  @media (min-width: 768px) {
+    body {
+      transition:
+        background-color 0.3s ease,
+        color 0.3s ease;
+    }
+  }
+
   h1,
   h2,
   h3,
@@ -163,6 +179,8 @@
     font-size: 1.5rem;
   }
 }
+
+/* ... (Keep the rest of your CSS exactly the same) ... */
 
 /* ==========================================================================
    4. COMPONENT UTILITIES (UI, Animations, Neon)
