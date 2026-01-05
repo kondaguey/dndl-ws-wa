@@ -54,7 +54,6 @@ export async function generateMetadata({ params }) {
   };
 }
 
-// 3. THE CONTENT PARSER
 const contentParserOptions = {
   replace: (domNode) => {
     if (domNode.name === "p") {
@@ -67,7 +66,6 @@ const contentParserOptions = {
       const textContent = extractText(domNode);
       const cleanText = textContent ? textContent.trim() : "";
 
-      // SHORTCODE DETECTION
       if (cleanText.startsWith("[[") && cleanText.endsWith("]]")) {
         const innerContent = cleanText.substring(2, cleanText.length - 2);
 
@@ -75,19 +73,14 @@ const contentParserOptions = {
         if (innerContent.startsWith("video:")) {
           const rawUrl = innerContent.replace("video:", "").trim();
           let embedUrl = rawUrl;
-
-          // Convert YouTube to Embed
           if (rawUrl.includes("youtube.com") || rawUrl.includes("youtu.be")) {
             const videoId =
               rawUrl.split("v=")[1]?.split("&")[0] || rawUrl.split("/").pop();
             embedUrl = `https://www.youtube.com/embed/${videoId}`;
-          }
-          // Convert Vimeo to Embed
-          else if (rawUrl.includes("vimeo.com")) {
+          } else if (rawUrl.includes("vimeo.com")) {
             const videoId = rawUrl.split("/").pop();
             embedUrl = `https://player.vimeo.com/video/${videoId}`;
           }
-
           return (
             <figure className="my-10 w-full md:w-2/3 mx-auto clear-both !block">
               <div className="relative aspect-video rounded-xl overflow-hidden shadow-2xl bg-black border border-teal-500/20 !w-full">
@@ -95,7 +88,6 @@ const contentParserOptions = {
                   src={embedUrl}
                   className="absolute inset-0 w-full h-full"
                   allowFullScreen
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   title="Embedded Video"
                 />
               </div>
@@ -103,17 +95,17 @@ const contentParserOptions = {
           );
         }
 
-        // --- B. AUDIO MODE ---
+        // --- B. AUDIO MODE (Explicit) ---
         if (innerContent.startsWith("audio:")) {
           const rawUrl = innerContent.replace("audio:", "").trim();
 
-          // Spotify Embed
+          // Spotify Handling
           if (rawUrl.includes("spotify.com")) {
             let embedUrl = rawUrl;
+            // Ensure embed format for Spotify
             if (!rawUrl.includes("/embed/")) {
               embedUrl = rawUrl.replace(".com/", ".com/embed/");
             }
-
             return (
               <figure className="my-8 w-full md:w-2/3 mx-auto clear-both !block">
                 <iframe
@@ -130,21 +122,23 @@ const contentParserOptions = {
             );
           }
 
-          // Native Audio (Supabase/MP3)
+          // Native Audio
           return (
             <figure className="my-8 w-full md:w-2/3 mx-auto clear-both !block">
               <audio
+                key={rawUrl}
                 controls
                 className="w-full border border-teal-500/20 rounded-full bg-slate-100 dark:bg-slate-900"
-                src={rawUrl}
               >
+                <source src={rawUrl} type="audio/mpeg" />
+                <source src={rawUrl} type="audio/mp3" />
                 Your browser does not support the audio element.
               </audio>
             </figure>
           );
         }
 
-        // --- C. GALLERY MODE (CAROUSEL) ---
+        // --- C. GALLERY MODE ---
         if (
           innerContent.startsWith("duo:") ||
           innerContent.startsWith("trio:")
@@ -152,50 +146,64 @@ const contentParserOptions = {
           const type = innerContent.startsWith("duo:") ? "duo" : "trio";
           const content = innerContent.replace(`${type}:`, "");
           const [urlsPart, ...params] = content.split("|caption=");
-
           let caption = params.length ? params[0].trim() : null;
-          if (caption === "") caption = null;
-
           const urls = urlsPart
             .split("|")
             .map((u) => u.trim())
             .filter(Boolean);
-
-          // Render the interactive carousel component
           return <GalleryCarousel images={urls} caption={caption} />;
         }
 
-        // --- D. SINGLE IMAGE MODE ---
+        // --- D. IMAGE MODE (With Audio Rescue) ---
         if (innerContent.startsWith("image:")) {
           const parts = innerContent.replace("image:", "").split("|");
           let url = parts[0].trim();
+
+          // 🚨 THE FIX: Check if this "image" is actually an audio file
+          if (url.match(/\.(mp3|wav|ogg|m4a)($|\?)/i)) {
+            return (
+              <figure className="my-8 w-full md:w-2/3 mx-auto clear-both !block">
+                <audio
+                  key={url}
+                  controls
+                  className="w-full border border-teal-500/20 rounded-full bg-slate-100 dark:bg-slate-900"
+                >
+                  <source src={url} type="audio/mpeg" />
+                  <source src={url} type="audio/mp3" />
+                  Your browser does not support the audio element.
+                </audio>
+                <div className="text-center mt-2">
+                  <a
+                    href={url}
+                    target="_blank"
+                    className="text-[10px] text-slate-400 uppercase tracking-widest hover:text-teal-500"
+                  >
+                    Download Audio
+                  </a>
+                </div>
+              </figure>
+            );
+          }
+
+          // Normal Image Logic
           let sizeClass = "w-full md:w-2/3";
           let alignClass = "!block mx-auto";
           let caption = null;
 
           parts.slice(1).forEach((part) => {
             const [key, val] = part.split("=").map((s) => (s ? s.trim() : ""));
-
             if (key === "size") {
               if (val === "small") sizeClass = "!w-full md:!w-1/3";
               if (val === "medium") sizeClass = "!w-full md:!w-1/2";
               if (val === "large") sizeClass = "!w-full md:!w-2/3";
               if (val === "full") sizeClass = "!w-full";
             }
-
             if (key === "align") {
-              if (val === "left") {
-                alignClass = "!float-left !mr-8 !mb-4";
-              } else if (val === "right") {
-                alignClass = "!float-right !ml-8 !mb-4";
-              } else {
-                alignClass = "!block !mx-auto !clear-both";
-              }
+              if (val === "left") alignClass = "!float-left !mr-8 !mb-4";
+              else if (val === "right") alignClass = "!float-right !ml-8 !mb-4";
+              else alignClass = "!block !mx-auto !clear-both";
             }
-
-            if (key === "caption") {
-              if (val.length > 0) caption = val;
-            }
+            if (key === "caption") caption = val;
           });
 
           return (
@@ -205,7 +213,7 @@ const contentParserOptions = {
               <div className="rounded-xl overflow-hidden shadow-2xl leading-none w-full bg-gray-100">
                 <img
                   src={url}
-                  alt={caption || "blog"}
+                  alt={caption || "blog"} // This is where "blog" came from!
                   className="block w-full h-auto object-cover !m-0 !p-0"
                   loading="lazy"
                 />
