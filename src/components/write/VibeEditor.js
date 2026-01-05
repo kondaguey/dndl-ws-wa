@@ -5,7 +5,7 @@ import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
-import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
+// We removed OnChangePlugin and replaced it with HtmlOutputPlugin below
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
@@ -22,11 +22,14 @@ import {
 } from "@lexical/list";
 import { CodeNode } from "@lexical/code";
 import { LinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
+// --- 1. NEW IMPORT FOR SQL GENERATION ---
+import { $generateHtmlFromNodes } from "@lexical/html";
 import {
   DecoratorNode,
   $createParagraphNode,
   $getSelection,
   $isRangeSelection,
+  $getRoot,
   FORMAT_TEXT_COMMAND,
   FORMAT_ELEMENT_COMMAND,
   COMMAND_PRIORITY_LOW,
@@ -88,15 +91,35 @@ export class SimpleImageNode extends DecoratorNode {
       version: 1,
     };
   }
-  createDOM() {
-    return document.createElement("div");
+
+  // --- 2. NEW METHOD: This ensures the SQL gets a real <img> tag ---
+  exportDOM() {
+    const element = document.createElement("img");
+    element.setAttribute("src", this.__src);
+    element.setAttribute("alt", this.__alt || "Blog content");
+    // These classes ensure it looks good when the SQL is rendered
+    element.setAttribute(
+      "class",
+      "w-full rounded-2xl shadow-xl my-8 border-2 border-white/10"
+    );
+    return { element };
   }
+
+  createDOM(config) {
+    const span = document.createElement("span");
+    const theme = config.theme;
+    const className = theme.image;
+    if (className !== undefined) {
+      span.className = className;
+    }
+    return span;
+  }
+
   updateDOM() {
     return false;
   }
 
   decorate() {
-    // Safety check: Don't render broken img tags if src is missing
     if (!this.__src)
       return (
         <div className="p-4 border border-red-500 text-red-500">
@@ -105,7 +128,7 @@ export class SimpleImageNode extends DecoratorNode {
       );
 
     return (
-      <div className="my-6 flex justify-center group relative">
+      <div className="my-6 flex justify-center group relative select-none">
         <img
           src={this.__src}
           alt={this.__alt || "Blog Image"}
@@ -153,6 +176,7 @@ const vibeTheme = {
     "border-l-4 pl-6 py-2 my-8 italic bg-white/5 rounded-r-lg theme-border-left theme-text-dim",
   code: "block bg-black/80 border theme-border-dim p-4 rounded-lg font-mono text-sm theme-text-primary overflow-x-auto my-6 shadow-inner",
   link: "underline decoration-2 underline-offset-2 cursor-pointer theme-text-primary theme-decoration",
+  image: "block",
 };
 
 // -----------------------------------------------------------------------------
@@ -217,7 +241,7 @@ const VibeModal = ({ isOpen, onClose, onConfirm, type }) => {
 };
 
 // -----------------------------------------------------------------------------
-// 4. TOOLBAR COMPONENT
+// 4. TOOLBAR COMPONENT (Your Original Version)
 // -----------------------------------------------------------------------------
 function VibeToolbar({ bgOpacity, setBgOpacity }) {
   const [editor] = useLexicalComposerContext();
@@ -308,15 +332,22 @@ function VibeToolbar({ bgOpacity, setBgOpacity }) {
     setModalType(type);
     setModalOpen(true);
   };
+
   const handleModalConfirm = (val) => {
     setModalOpen(false);
     if (!val) return;
-    if (modalType === "link") editor.dispatchCommand(TOGGLE_LINK_COMMAND, val);
-    else if (modalType === "image")
+
+    // Force focus back to editor before dispatching
+    editor.focus();
+
+    if (modalType === "link") {
+      editor.dispatchCommand(TOGGLE_LINK_COMMAND, val);
+    } else if (modalType === "image") {
       editor.dispatchCommand(INSERT_IMAGE_COMMAND, {
         src: val,
         alt: "vibe-asset",
       });
+    }
   };
 
   const btnClass = (isActive) =>
@@ -325,20 +356,6 @@ function VibeToolbar({ bgOpacity, setBgOpacity }) {
   return (
     <>
       <div className="flex items-center flex-wrap gap-1 p-4 border-b theme-border-dim bg-[var(--bg-toolbar)] backdrop-blur-md sticky top-0 z-50">
-        {/* OPACITY SLIDER */}
-        <div className="flex items-center gap-2 mr-4 border-r theme-border-dim pr-4 hidden md:flex">
-          <Ghost size={16} className="theme-text-dim" />
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={bgOpacity}
-            onChange={(e) => setBgOpacity(e.target.value)}
-            className="w-16 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
-            title="Background Opacity"
-          />
-        </div>
-
         <button
           onMouseDown={(e) => {
             e.preventDefault();
@@ -534,6 +551,19 @@ function VibeToolbar({ bgOpacity, setBgOpacity }) {
         >
           <ImageIcon size={18} />
         </button>
+        {/* OPACITY SLIDER */}
+        <div className="flex items-center gap-2 mr-4 border-r theme-border-dim pr-4 hidden md:flex">
+          <Ghost size={16} className="theme-text-dim" />
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={bgOpacity}
+            onChange={(e) => setBgOpacity(e.target.value)}
+            className="w-16 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
+            title="Background Opacity"
+          />
+        </div>
       </div>
       <VibeModal
         isOpen={modalOpen}
@@ -578,13 +608,37 @@ export default function VibeEditor({
         INSERT_IMAGE_COMMAND,
         (payload) => {
           const imageNode = $createSimpleImageNode(payload.src, payload.alt);
+
           const selection = $getSelection();
-          if ($isRangeSelection(selection)) selection.insertNodes([imageNode]);
+          if ($isRangeSelection(selection)) {
+            selection.insertNodes([imageNode]);
+          } else {
+            // Fallback: If no selection (e.g. focus lost), append to the end of the doc
+            const root = $getRoot();
+            const p = $createParagraphNode();
+            p.append(imageNode);
+            root.append(p);
+          }
           return true;
         },
         COMMAND_PRIORITY_LOW
       );
     }, [editor]);
+    return null;
+  };
+
+  // --- 3. NEW PLUGIN: Converts Editor content to HTML string ---
+  const HtmlOutputPlugin = ({ onChange }) => {
+    const [editor] = useLexicalComposerContext();
+    useEffect(() => {
+      return editor.registerUpdateListener(({ editorState }) => {
+        editorState.read(() => {
+          // This uses the exportDOM method we added to the Image Node
+          const htmlString = $generateHtmlFromNodes(editor, null);
+          onChange(htmlString);
+        });
+      });
+    }, [editor, onChange]);
     return null;
   };
 
@@ -635,6 +689,10 @@ export default function VibeEditor({
       <LexicalComposer initialConfig={initialConfig}>
         <VibeToolbar bgOpacity={bgOpacity} setBgOpacity={setBgOpacity} />
         <ImagePlugin />
+
+        {/* REPLACED OnChangePlugin WITH HtmlOutputPlugin */}
+        <HtmlOutputPlugin onChange={onChange} />
+
         <ListPlugin />
         <LinkPlugin />
         <HistoryPlugin />
@@ -653,7 +711,6 @@ export default function VibeEditor({
                 The canvas is yours...
               </div>
             }
-            // --- UPDATED ERROR BOUNDARY TO SHOW REAL ERROR ---
             ErrorBoundary={({ error }) => (
               <div className="p-4 border border-red-500 bg-red-900/50 text-white rounded font-mono text-xs">
                 <strong>CRASH REPORT:</strong>
@@ -664,7 +721,6 @@ export default function VibeEditor({
               </div>
             )}
           />
-          <OnChangePlugin onChange={(editorState) => onChange(editorState)} />
         </div>
       </LexicalComposer>
 

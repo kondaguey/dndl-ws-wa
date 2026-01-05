@@ -28,9 +28,11 @@ import {
   Cpu,
   Zap,
   Flame,
-  Calendar, // New Icon
-  User, // New Icon
-  Type, // New Icon
+  Calendar,
+  User,
+  Type,
+  Database, // NEW ICON
+  Terminal,
 } from "lucide-react";
 import { FaHotdog } from "react-icons/fa6";
 import { Canvas } from "@react-three/fiber";
@@ -54,6 +56,9 @@ const CATEGORIES = [
   "Production",
 ];
 
+// --- HELPER: Sanitize Filenames ---
+const sanitize = (name) => name.replace(/[^a-z0-9.]/gi, "-").toLowerCase();
+
 export default function MasterEditorPage() {
   // --- STATE ---
   const [postId, setPostId] = useState(null);
@@ -65,7 +70,7 @@ export default function MasterEditorPage() {
   const [urlPath, setUrlPath] = useState("");
   const [tag, setTag] = useState("Life");
   const [date, setDate] = useState("");
-  const [author, setAuthor] = useState(""); // NEW: Author State
+  const [author, setAuthor] = useState("");
   const [imageCaption, setImageCaption] = useState("");
 
   const [images, setImages] = useState({
@@ -74,10 +79,14 @@ export default function MasterEditorPage() {
     img3: "",
     img4: "",
     img5: "",
+    img6: "",
   });
 
   const [isSaving, setIsSaving] = useState(false);
   const [showLoadModal, setShowLoadModal] = useState(false);
+  const [showSqlModal, setShowSqlModal] = useState(false); // NEW STATE
+  const [generatedSql, setGeneratedSql] = useState(""); // NEW STATE
+
   const [availableDrafts, setAvailableDrafts] = useState([]);
   const [recentAssets, setRecentAssets] = useState([]);
   const [uploadingSlot, setUploadingSlot] = useState(null);
@@ -100,6 +109,7 @@ export default function MasterEditorPage() {
     img3: useRef(null),
     img4: useRef(null),
     img5: useRef(null),
+    img6: useRef(null),
   };
 
   // --- INIT & ASSETS ---
@@ -112,7 +122,6 @@ export default function MasterEditorPage() {
   };
 
   useEffect(() => {
-    // Set default date to today if empty
     if (!date) setDate(new Date().toISOString().split("T")[0]);
     fetchRecentAssets();
   }, []);
@@ -138,12 +147,74 @@ export default function MasterEditorPage() {
       setContent(null);
       setUrlPath("");
       setTag("Life");
-      setAuthor(""); // Clear Author
-      setImageCaption(""); // Clear Caption
-      setImages({ main: "", img2: "", img3: "", img4: "", img5: "" });
+      setAuthor("");
+      setImageCaption("");
+      setImages({ main: "", img2: "", img3: "", img4: "", img5: "", img6: "" });
       setIsPublished(false);
       setDate(new Date().toISOString().split("T")[0]);
     }
+  };
+
+  const copyToClipboard = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    alert("Copied to clipboard!");
+  };
+
+  // --- SQL GENERATOR FUNCTION ---
+  const generateAndShowSql = () => {
+    // Helper to escape single quotes for SQL text
+    const escape = (str) => (str ? str.replace(/'/g, "''") : "");
+
+    const sql = `
+INSERT INTO posts (
+  title, 
+  slug, 
+  date, 
+  author, 
+  tag, 
+  image, 
+  image_2, 
+  image_3, 
+  image_4, 
+  image_5, 
+  image_6,
+  image_caption, 
+  content, 
+  published
+) VALUES (
+  '${escape(title)}',
+  '${escape(urlPath)}',
+  '${date}',
+  '${escape(author)}',
+  '${escape(tag)}',
+  '${images.main}',
+  '${images.img2}',
+  '${images.img3}',
+  '${images.img4}',
+  '${images.img5}',
+  '${images.img6}',
+  '${escape(imageCaption)}',
+  '${escape(content)}',
+  ${isPublished}
+)
+ON CONFLICT (slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  content = EXCLUDED.content,
+  image = EXCLUDED.image,
+  image_2 = EXCLUDED.image_2,
+  image_3 = EXCLUDED.image_3,
+  image_4 = EXCLUDED.image_4,
+  image_5 = EXCLUDED.image_5,
+  image_6 = EXCLUDED.image_6,
+  image_caption = EXCLUDED.image_caption,
+  author = EXCLUDED.author,
+  tag = EXCLUDED.tag,
+  published = EXCLUDED.published;
+    `.trim();
+
+    setGeneratedSql(sql);
+    setShowSqlModal(true);
   };
 
   const handleDatabaseAction = async (actionType) => {
@@ -157,7 +228,7 @@ export default function MasterEditorPage() {
       title,
       slug: urlPath,
       date,
-      author, // Saving Author
+      author,
       tag,
       content,
       image: images.main,
@@ -165,7 +236,8 @@ export default function MasterEditorPage() {
       image_3: images.img3,
       image_4: images.img4,
       image_5: images.img5,
-      image_caption: imageCaption, // Saving Caption
+      image_6: images.img6,
+      image_caption: imageCaption,
       published: finalPublishedStatus,
     };
 
@@ -209,15 +281,16 @@ export default function MasterEditorPage() {
       setUrlPath(data.slug);
       setTag(data.tag);
       setDate(data.date);
-      setAuthor(data.author || ""); // Load Author
+      setAuthor(data.author || "");
       setIsPublished(data.published || false);
-      setImageCaption(data.image_caption || ""); // Load Caption
+      setImageCaption(data.image_caption || "");
       setImages({
         main: data.image || "",
         img2: data.image_2 || "",
         img3: data.image_3 || "",
         img4: data.image_4 || "",
         img5: data.image_5 || "",
+        img6: data.image_6 || "",
       });
       if (data.content) setContent(data.content);
       setShowLoadModal(false);
@@ -244,26 +317,38 @@ export default function MasterEditorPage() {
     }
   };
 
+  // --- UPLOAD LOGIC (FIXED FROM PREVIOUS TURN) ---
   const handleFileUpload = async (e, slotKey) => {
     const file = e.target.files[0];
     if (!file) return;
+
     if (!urlPath)
       return alert("Please enter a Title to generate a slug first.");
 
     setUploadingSlot(slotKey);
     try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${slotKey}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${urlPath}/assets/${fileName}`;
+      const cleanName = sanitize(file.name);
+      let filePath = "";
 
+      // 1. Determine Folder Path
+      if (slotKey === "main") {
+        filePath = `${urlPath}/hero/${cleanName}`;
+      } else {
+        filePath = `${urlPath}/content-images/${cleanName}`;
+      }
+
+      // 2. Upload
       const { error } = await supabase.storage
         .from("blog-images")
         .upload(filePath, file, { upsert: true });
       if (error) throw error;
 
+      // 3. Get URL
       const {
         data: { publicUrl },
       } = supabase.storage.from("blog-images").getPublicUrl(filePath);
+
+      // 4. Set State
       setImages((prev) => ({ ...prev, [slotKey]: publicUrl }));
       fetchRecentAssets();
     } catch (error) {
@@ -325,6 +410,52 @@ export default function MasterEditorPage() {
         </div>
       )}
 
+      {/* --- SQL MODAL --- */}
+      {showSqlModal && (
+        <div className="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div
+            className={`w-full max-w-4xl bg-[#0a0a0a] border-2 ${themeBorderClass} rounded-2xl p-6 shadow-2xl flex flex-col max-h-[90vh]`}
+          >
+            <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <Terminal size={20} className={themeTextClass} />
+                <h2
+                  className={`text-xl font-black uppercase ${themeTextClass}`}
+                >
+                  SQL Generator
+                </h2>
+              </div>
+              <button
+                onClick={() => setShowSqlModal(false)}
+                className="hover:text-white text-slate-500"
+              >
+                <X />
+              </button>
+            </div>
+            <div className="flex-grow overflow-hidden relative rounded-lg border border-white/10 bg-black/50">
+              <textarea
+                value={generatedSql}
+                readOnly
+                className="w-full h-[50vh] p-4 bg-transparent text-xs font-mono text-green-400 outline-none resize-none"
+              />
+              <div className="absolute top-2 right-2">
+                <button
+                  onClick={() => copyToClipboard(generatedSql)}
+                  className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded text-xs uppercase font-bold backdrop-blur flex items-center gap-2"
+                >
+                  <Copy size={14} /> Copy SQL
+                </button>
+              </div>
+            </div>
+            <p className="mt-4 text-[10px] text-slate-500 font-mono text-center">
+              WARNING: This executes a raw INSERT/UPDATE. It will overwrite
+              database fields for this slug.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* --- LOAD DRAFT MODAL --- */}
       {showLoadModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div
@@ -418,18 +549,31 @@ export default function MasterEditorPage() {
             <button
               onClick={handleClear}
               className={`p-4 rounded-full transition-all ${getBtnBase()} hover:text-red-500 hover:border-red-500`}
+              title="Clear All"
             >
               <FilePlus size={18} />
             </button>
             <button
               onClick={fetchDrafts}
               className={`px-6 py-4 rounded-full uppercase font-bold text-xs tracking-widest transition-all ${getBtnBase()}`}
+              title="Load Archive"
             >
               <Archive size={14} />
             </button>
+
+            {/* --- NEW SQL GENERATOR BUTTON --- */}
+            <button
+              onClick={generateAndShowSql}
+              className={`px-4 py-4 rounded-full font-bold uppercase text-xs tracking-widest transition-all border border-blue-500/30 text-blue-400 bg-blue-900/10 hover:bg-blue-500 hover:text-white flex items-center gap-2`}
+              title="Generate SQL"
+            >
+              <Database size={14} /> SQL
+            </button>
+
             <button
               onClick={() => handleDatabaseAction("DRAFT")}
               className={`p-4 rounded-full transition-all ${getBtnBase()}`}
+              title="Save Draft"
             >
               {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
             </button>
@@ -437,6 +581,7 @@ export default function MasterEditorPage() {
               <button
                 onClick={() => handleDatabaseAction("UNPUBLISH")}
                 className="p-4 rounded-full bg-red-900/20 text-red-500 border border-red-500 hover:bg-red-600 hover:text-white transition-all"
+                title="Unpublish"
               >
                 <Ban size={18} />
               </button>
@@ -525,7 +670,7 @@ export default function MasterEditorPage() {
                   ))}
                 </select>
 
-                {/* 4. Main Image */}
+                {/* 4. Main Image (Hero) */}
                 <div className="flex gap-2">
                   <div className="relative flex-grow">
                     <ImageIcon
@@ -541,6 +686,15 @@ export default function MasterEditorPage() {
                       className={`w-full p-3 pl-10 bg-transparent border-2 rounded-xl outline-none text-[10px] font-mono ${isDark ? "border-white/10 text-white placeholder-slate-600" : "border-slate-200 text-slate-800 placeholder-slate-400"}`}
                     />
                   </div>
+                  {/* Copy Button */}
+                  <button
+                    onClick={() => copyToClipboard(images.main)}
+                    className={`p-3 rounded-xl border-2 ${isDark ? "border-white/10 hover:bg-white/5" : "border-slate-200 hover:bg-slate-50"}`}
+                    title="Copy URL"
+                  >
+                    <Copy size={16} />
+                  </button>
+                  {/* Upload Button */}
                   <button
                     onClick={() => fileInputRefs.main.current.click()}
                     className={`p-3 rounded-xl border-2 ${isDark ? "border-white/10 hover:bg-white/5" : "border-slate-200 hover:bg-slate-50"}`}
@@ -584,7 +738,7 @@ export default function MasterEditorPage() {
               >
                 Content Assets
               </h3>
-              {["img2", "img3", "img4"].map((key, i) => (
+              {["img2", "img3", "img4", "img5", "img6"].map((key, i) => (
                 <div key={key} className="flex gap-2 mb-2">
                   <input
                     value={images[key]}
@@ -593,10 +747,21 @@ export default function MasterEditorPage() {
                     readOnly
                   />
                   <button
+                    onClick={() => copyToClipboard(images[key])}
+                    className={`p-2 border rounded ${isDark ? "border-white/10 hover:bg-white/5" : "border-slate-200 hover:bg-slate-50"}`}
+                    title="Copy URL"
+                  >
+                    <Copy size={12} />
+                  </button>
+                  <button
                     onClick={() => fileInputRefs[key].current.click()}
                     className={`p-2 border rounded ${isDark ? "border-white/10 hover:bg-white/5" : "border-slate-200 hover:bg-slate-50"}`}
                   >
-                    <Upload size={12} />
+                    {uploadingSlot === key ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <Upload size={12} />
+                    )}
                   </button>
                   <input
                     type="file"
