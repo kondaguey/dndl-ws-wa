@@ -10,8 +10,7 @@ export default function BlogCard({ post, delay = 0 }) {
     ? Math.ceil(post.content.split(/\s+/).length / 225)
     : 1;
 
-  // 2. Format Views with Commas (e.g. "1,200")
-  // We use "0" if post.views is null/undefined
+  // 2. Format Views
   const viewCount = post.views ? post.views.toLocaleString() : "0";
 
   return (
@@ -20,7 +19,7 @@ export default function BlogCard({ post, delay = 0 }) {
       style={{ animationDelay: `${delay}s` }}
     >
       <Link href={`/blog/${post.slug}`} className="block h-full">
-        {/* OUTER CONTAINER: bg-white blocks the background blobs */}
+        {/* OUTER CONTAINER */}
         <div className="relative h-full w-full rounded-[1.5rem] overflow-hidden p-[2px] shadow-[0_10px_40px_-15px_rgba(0,0,0,0.1)] bg-white transition-all duration-300 hover:shadow-[0_20px_50px_-12px_rgba(13,148,136,0.25)] hover:-translate-y-2">
           {/* THE SNAKE BORDER */}
           <div
@@ -32,14 +31,18 @@ export default function BlogCard({ post, delay = 0 }) {
 
           {/* INNER CARD */}
           <div className="relative h-full flex flex-col bg-white rounded-[1.4rem] overflow-hidden">
-            {/* Image Area */}
-            <div className="relative h-48 w-full overflow-hidden">
+            {/* IMAGE AREA */}
+            <div className="relative h-48 w-full overflow-hidden bg-slate-100">
               <Image
                 src={post.image}
                 alt={post.title}
                 fill
+                // Optimized sizes for grid layout
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
               />
+
+              {/* TAG BADGE */}
               <div className="absolute top-3 left-3">
                 <span className="bg-white/90 backdrop-blur-sm text-teal-700 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
                   <Tag size={9} className="fill-teal-700/20" />
@@ -48,7 +51,7 @@ export default function BlogCard({ post, delay = 0 }) {
               </div>
             </div>
 
-            {/* Content Area */}
+            {/* CONTENT AREA */}
             <div className="p-5 flex flex-col flex-grow bg-white border-t border-slate-100">
               {/* META ROW */}
               <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -66,7 +69,6 @@ export default function BlogCard({ post, delay = 0 }) {
 
                 <div className="h-2 w-[1px] bg-slate-200"></div>
 
-                {/* VIEW COUNTER */}
                 <div className="flex items-center gap-1 text-[9px] font-bold uppercase text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded-md">
                   <Eye size={10} className="text-teal-500" />
                   {viewCount}
@@ -97,7 +99,6 @@ export default function BlogCard({ post, delay = 0 }) {
         </div>
       </Link>
 
-      {/* Styles for this specific card's animation */}
       <style jsx>{`
         @keyframes border-spin {
           100% {

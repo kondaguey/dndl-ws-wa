@@ -329,6 +329,17 @@
     font-size: 1.125rem;
   }
 
+  /* PARAGRAPHS (The Fix) */
+  .blog-content p {
+    margin-bottom: 1.5rem; /* Adds the missing space */
+    margin-top: 0;
+  }
+
+  /* Prevent empty paragraphs (ghost lines) from taking up space */
+  .blog-content p:empty {
+    display: none;
+  }
+
   /* HEADINGS */
   .blog-content h2 {
     font-size: 1.875rem;
@@ -338,7 +349,7 @@
     margin-bottom: 1.5rem;
     letter-spacing: -0.025em;
     line-height: 1.2;
-    clear: both; /* Ensure headings clear floated images */
+    clear: both;
   }
   .blog-content h3 {
     font-size: 1.5rem;
@@ -358,7 +369,7 @@
   .blog-content li {
     position: relative;
     padding-left: 2rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem; /* Added spacing between list items */
   }
   .blog-content li::before {
     content: "";
@@ -375,11 +386,24 @@
     transition: transform 0.3s ease;
   }
 
+  /* BLOCKQUOTES (Optional addition for your quotes) */
+  .blog-content blockquote {
+    border-left: 4px solid #14b8a6;
+    padding-left: 1.5rem;
+    font-style: italic;
+    color: #475569;
+    margin: 2rem 0;
+    background: rgba(255, 255, 255, 0.5);
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    border-radius: 0 1rem 1rem 0;
+  }
+
   /* --- FIGURE & IMAGE LAYOUT ENGINE --- */
 
   /* 1. Base Figure Styling (The Wrapper) */
   .blog-content figure {
-    margin: 2rem 0;
+    margin: 2.5rem 0; /* Increased spacing for breathing room */
     display: block;
     max-width: 100%;
   }
@@ -392,7 +416,6 @@
     display: block;
     width: 100%;
     height: auto;
-    /* REMOVED generic margin to allow figure to control spacing */
     margin: 0;
   }
 
@@ -401,7 +424,7 @@
     text-align: center;
     font-size: 0.75rem;
     color: #94a3b8;
-    margin-top: 0.5rem;
+    margin-top: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -411,26 +434,24 @@
 
   /* 4. ALIGNMENT & SIZING OVERRIDES (Desktop Only) */
   @media (min-width: 768px) {
-    /* FLOATS: Using !important to fight 'prose' defaults */
     figure.float-left,
     .float-left {
       float: left !important;
       margin-right: 2rem !important;
-      margin-bottom: 1rem !important;
+      margin-bottom: 1.5rem !important;
       margin-top: 0.5rem !important;
-      max-width: 50%; /* Prevent wide images from breaking flow */
+      max-width: 50%;
     }
 
     figure.float-right,
     .float-right {
       float: right !important;
       margin-left: 2rem !important;
-      margin-bottom: 1rem !important;
+      margin-bottom: 1.5rem !important;
       margin-top: 0.5rem !important;
       max-width: 50%;
     }
 
-    /* CLEARANCE */
     .clear-both {
       clear: both;
     }

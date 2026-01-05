@@ -1,21 +1,18 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { createClient } from "../../utils/supabase/server";
-// IMPORT THE SHARED CARD
+import { createClient } from "@/src/utils/supabase/server"; // Ensure path is correct for your structure
 import BlogCard from "./BlogCard";
 
 export default async function PostsWidget({ currentSlug }) {
   const supabase = await createClient();
 
-  // 1. Fetch 5 posts sorted by popularity
   const { data: posts } = await supabase
     .from("posts")
     .select("*")
-    .eq("published", true) // <--- ADD THIS LINE TO FILTER
+    .eq("published", true)
     .order("views", { ascending: false })
     .limit(5);
 
-  // 2. Filter out current post
   const relatedPosts = posts
     ? posts.filter((post) => post.slug !== currentSlug).slice(0, 4)
     : [];
@@ -36,10 +33,8 @@ export default async function PostsWidget({ currentSlug }) {
         </Link>
       </div>
 
-      {/* GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         {relatedPosts.map((post, index) => (
-          // USE THE SHARED CARD
           <BlogCard key={post.slug} post={post} delay={index * 0.1} />
         ))}
       </div>

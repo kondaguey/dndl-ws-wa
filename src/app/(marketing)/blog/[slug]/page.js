@@ -260,18 +260,8 @@ export default async function BlogPost({ params }) {
       </div>
 
       {/* --- HERO SECTION --- */}
-      <div className="relative z-0 pt-24 pb-4 px-4 md:px-6">
+      <div className="relative z-0 pt-8 md:pt-24 pb-4 px-4 md:px-6">
         <div className="relative z-10 max-w-5xl mx-auto text-center animate-fade-in-up">
-          <Link
-            href="/blog"
-            className="inline-flex items-center gap-2 text-slate-500 hover:text-teal-600 transition-colors mb-6 text-[10px] md:text-xs font-black uppercase tracking-widest group"
-          >
-            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-white/60 flex items-center justify-center group-hover:bg-teal-100 transition-all border border-slate-100 shadow-sm">
-              <ChevronLeft size={14} />
-            </div>
-            All posts
-          </Link>
-
           {/* MAIN HERO IMAGE */}
           <figure className="relative w-full mb-6 group md:max-w-4xl md:mx-auto">
             <div className="relative w-full aspect-video rounded-xl md:rounded-2xl overflow-hidden shadow-2xl shadow-indigo-900/10 border-4 border-white">
@@ -291,6 +281,11 @@ export default async function BlogPost({ params }) {
           </figure>
 
           {/* META DATA */}
+          <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight px-2 max-w-4xl mx-auto">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-indigo-500 animate-gradient-x">
+              {post.title}
+            </span>
+          </h1>
           <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 mb-4">
             <div className="flex items-center gap-2 bg-white/70 backdrop-blur-md px-3 py-1 rounded-full border border-slate-200/60 shadow-sm">
               <Calendar size={10} className="text-teal-500" />
@@ -311,12 +306,6 @@ export default async function BlogPost({ params }) {
               </span>
             </div>
           </div>
-
-          <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight px-2 max-w-4xl mx-auto">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-indigo-500 animate-gradient-x">
-              {post.title}
-            </span>
-          </h1>
         </div>
       </div>
 
