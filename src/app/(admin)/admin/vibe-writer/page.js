@@ -31,8 +31,9 @@ import {
   Calendar,
   User,
   Type,
-  Database, // NEW ICON
+  Database,
   Terminal,
+  Code, // --- NEW IMPORT FOR THE BUTTON ICON
 } from "lucide-react";
 import { FaHotdog } from "react-icons/fa6";
 import { Canvas } from "@react-three/fiber";
@@ -84,8 +85,8 @@ export default function MasterEditorPage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [showLoadModal, setShowLoadModal] = useState(false);
-  const [showSqlModal, setShowSqlModal] = useState(false); // NEW STATE
-  const [generatedSql, setGeneratedSql] = useState(""); // NEW STATE
+  const [showSqlModal, setShowSqlModal] = useState(false);
+  const [generatedSql, setGeneratedSql] = useState("");
 
   const [availableDrafts, setAvailableDrafts] = useState([]);
   const [recentAssets, setRecentAssets] = useState([]);
@@ -158,12 +159,19 @@ export default function MasterEditorPage() {
   const copyToClipboard = (text) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
-    alert("Copied to clipboard!");
+    alert("URL Copied!");
+  };
+
+  // --- NEW: Copy HTML Tag Button ---
+  const copyHtmlTag = (url) => {
+    if (!url) return;
+    const tag = `<img src="${url}" alt="blog-image" />`;
+    navigator.clipboard.writeText(tag);
+    alert("HTML Code Copied: " + tag);
   };
 
   // --- SQL GENERATOR FUNCTION ---
   const generateAndShowSql = () => {
-    // Helper to escape single quotes for SQL text
     const escape = (str) => (str ? str.replace(/'/g, "''") : "");
 
     const sql = `
@@ -317,7 +325,7 @@ ON CONFLICT (slug) DO UPDATE SET
     }
   };
 
-  // --- UPLOAD LOGIC (FIXED FROM PREVIOUS TURN) ---
+  // --- UPLOAD LOGIC ---
   const handleFileUpload = async (e, slotKey) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -368,9 +376,9 @@ ON CONFLICT (slug) DO UPDATE SET
     setVibeMode((prev) => (prev === "glitch" ? "sexy" : "glitch"));
   };
 
-  const handleLexicalChange = (editorState) => {
-    const jsonString = JSON.stringify(editorState);
-    setContent(jsonString);
+  // --- IMPORTANT: Handles raw HTML string from editor ---
+  const handleLexicalChange = (htmlString) => {
+    setContent(htmlString);
   };
 
   const getTitleClass = () => {
@@ -561,7 +569,6 @@ ON CONFLICT (slug) DO UPDATE SET
               <Archive size={14} />
             </button>
 
-            {/* --- NEW SQL GENERATOR BUTTON --- */}
             <button
               onClick={generateAndShowSql}
               className={`px-4 py-4 rounded-full font-bold uppercase text-xs tracking-widest transition-all border border-blue-500/30 text-blue-400 bg-blue-900/10 hover:bg-blue-500 hover:text-white flex items-center gap-2`}
@@ -694,6 +701,14 @@ ON CONFLICT (slug) DO UPDATE SET
                   >
                     <Copy size={16} />
                   </button>
+                  {/* NEW: Copy HTML Code Button */}
+                  <button
+                    onClick={() => copyHtmlTag(images.main)}
+                    className={`p-3 rounded-xl border-2 ${isDark ? "border-white/10 hover:bg-white/5" : "border-slate-200 hover:bg-slate-50"}`}
+                    title="Copy HTML Tag"
+                  >
+                    <Code size={16} />
+                  </button>
                   {/* Upload Button */}
                   <button
                     onClick={() => fileInputRefs.main.current.click()}
@@ -752,6 +767,14 @@ ON CONFLICT (slug) DO UPDATE SET
                     title="Copy URL"
                   >
                     <Copy size={12} />
+                  </button>
+                  {/* NEW: Copy HTML Code Button */}
+                  <button
+                    onClick={() => copyHtmlTag(images[key])}
+                    className={`p-2 border rounded ${isDark ? "border-white/10 hover:bg-white/5" : "border-slate-200 hover:bg-slate-50"}`}
+                    title="Copy HTML Tag"
+                  >
+                    <Code size={12} />
                   </button>
                   <button
                     onClick={() => fileInputRefs[key].current.click()}

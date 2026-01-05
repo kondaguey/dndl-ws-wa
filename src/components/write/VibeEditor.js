@@ -59,10 +59,11 @@ import {
   Image as ImageIcon,
   X,
   Ghost,
+  Terminal, // Icon for the placeholder
 } from "lucide-react";
 
 // -----------------------------------------------------------------------------
-// 1. CUSTOM IMAGE NODE
+// 1. RAW HTML IMAGE NODE (The Fix)
 // -----------------------------------------------------------------------------
 const INSERT_IMAGE_COMMAND = createCommand("INSERT_IMAGE_COMMAND");
 
@@ -92,12 +93,12 @@ export class SimpleImageNode extends DecoratorNode {
     };
   }
 
-  // --- 2. NEW METHOD: This ensures the SQL gets a real <img> tag ---
+  // --- 2. SQL EXPORT LOGIC: This creates the real <img> tag for the DB ---
   exportDOM() {
     const element = document.createElement("img");
     element.setAttribute("src", this.__src);
     element.setAttribute("alt", this.__alt || "Blog content");
-    // These classes ensure it looks good when the SQL is rendered
+    // These classes ensure it looks good when the SQL is rendered on your site
     element.setAttribute(
       "class",
       "w-full rounded-2xl shadow-xl my-8 border-2 border-white/10"
@@ -119,26 +120,26 @@ export class SimpleImageNode extends DecoratorNode {
     return false;
   }
 
+  // --- 3. VISUAL FALLBACK: Renders the "Code Placeholder" in the Editor ---
   decorate() {
-    if (!this.__src)
-      return (
-        <div className="p-4 border border-red-500 text-red-500">
-          Broken Image Link
-        </div>
-      );
-
     return (
-      <div className="my-6 flex justify-center group relative select-none">
-        <img
-          src={this.__src}
-          alt={this.__alt || "Blog Image"}
-          className="max-w-full rounded-xl border-2 shadow-lg transition-all duration-300"
-          style={{
-            maxHeight: "500px",
-            borderColor: "var(--theme-border)",
-            boxShadow: "var(--theme-shadow)",
-          }}
-        />
+      <div className="my-6 select-none group relative">
+        <div className="bg-[#0f172a] border border-slate-700 rounded-lg p-4 flex items-center gap-4 shadow-inner">
+          <div className="p-3 bg-slate-800 rounded-md border border-slate-600">
+            <Terminal size={20} className="text-teal-400" />
+          </div>
+          <div className="flex-grow font-mono text-xs overflow-hidden">
+            <div className="text-slate-400 uppercase text-[10px] font-bold mb-1 tracking-widest">
+              Raw HTML Asset
+            </div>
+            <div className="text-teal-200 truncate">
+              {`<img src="`}
+              <span className="text-yellow-400">{this.__src}</span>
+              {`" />`}
+            </div>
+          </div>
+        </div>
+        <div className="absolute inset-0 border-2 border-teal-500/0 group-hover:border-teal-500/50 rounded-lg transition-all pointer-events-none" />
       </div>
     );
   }
@@ -206,7 +207,7 @@ const VibeModal = ({ isOpen, onClose, onConfirm, type }) => {
       >
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold uppercase tracking-widest text-sm theme-text-primary">
-            Insert {type === "link" ? "Hyperlink" : "Visual Asset"}
+            Insert {type === "link" ? "Hyperlink" : "Visual Asset HTML"}
           </h3>
           <button onClick={onClose} className="theme-text-dim hover:text-white">
             <X size={16} />
@@ -241,7 +242,7 @@ const VibeModal = ({ isOpen, onClose, onConfirm, type }) => {
 };
 
 // -----------------------------------------------------------------------------
-// 4. TOOLBAR COMPONENT (Your Original Version)
+// 4. TOOLBAR COMPONENT
 // -----------------------------------------------------------------------------
 function VibeToolbar({ bgOpacity, setBgOpacity }) {
   const [editor] = useLexicalComposerContext();
@@ -627,7 +628,7 @@ export default function VibeEditor({
     return null;
   };
 
-  // --- 3. NEW PLUGIN: Converts Editor content to HTML string ---
+  // --- 4. HTML OUTPUT PLUGIN ---
   const HtmlOutputPlugin = ({ onChange }) => {
     const [editor] = useLexicalComposerContext();
     useEffect(() => {
