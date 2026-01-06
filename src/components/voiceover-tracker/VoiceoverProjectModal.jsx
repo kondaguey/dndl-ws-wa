@@ -9,15 +9,13 @@ import {
   Save,
   FileText,
   Megaphone,
-  Calendar,
-  Clock,
   Link as LinkIcon,
   User,
   DollarSign,
-  Briefcase,
   Loader2,
   ArrowLeft,
   Plus,
+  Clock,
 } from "lucide-react";
 
 const supabase = createClient();
@@ -89,12 +87,18 @@ export default function VoiceoverProjectModal({
 
   const handleMagicParse = () => {
     if (!magicText) return;
+
+    // DETECT FORMAT
+    // IDIOM emails usually start with "Project Name:"
+    // ASP Dashboard usually has "Talent Role Information" or "Audition Deadline"
     if (
-      magicText.includes("Project Name:") &&
-      magicText.includes("Audition Due Date:")
-    )
+      magicText.includes("Audition Deadline") ||
+      magicText.includes("Talent Role Information")
+    ) {
+      parseASPBlob();
+    } else {
       parseIDIOMBlob();
-    else parseASPBlob();
+    }
     setStep(2);
   };
 
@@ -110,6 +114,8 @@ export default function VoiceoverProjectModal({
         return "";
       }
     };
+
+    // Date Logic for Idiom (Example: "Monday, January 6th")
     const dateMatch = magicText.match(/Audition Due Date:\s*\n\s*(.*?)\s*\n/i);
     let d = "",
       t = "17:00";
@@ -124,6 +130,7 @@ export default function VoiceoverProjectModal({
         t = `${String(obj.getHours()).padStart(2, "0")}:${String(obj.getMinutes()).padStart(2, "0")}`;
       }
     }
+
     setFormData((prev) => ({
       ...prev,
       client_name: "IDIOM",
@@ -141,78 +148,156 @@ export default function VoiceoverProjectModal({
     }));
   };
 
+  // --- REWRITTEN ASP PARSER FOR DASHBOARD FORMAT ---
   const parseASPBlob = () => {
-    const extract = (l, e) => {
+    // Helper to grab text between two strings
+    const extract = (startStr, endStr) => {
       try {
-        return magicText
-          .match(new RegExp(`${l}[\\s\\S]*?(${e}|\\n\\n|$)`, "i"))[0]
-          .replace(new RegExp(l, "i"), "")
-          .replace(new RegExp(e, "i"), "")
+        const regex = new RegExp(`${startStr}[\\s\\S]*?(${endStr}|$)`, "i");
+        const match = magicText.match(regex);
+        if (!match) return "";
+        return match[0]
+          .replace(new RegExp(startStr, "i"), "")
+          .replace(new RegExp(endStr, "i"), "")
           .trim();
       } catch (e) {
         return "";
       }
     };
+
+    // 1. PROJECT TITLE
+    // Look for "Project Name" followed by the value
+    let title = (magicText.match(/Project Name\s*\n\s*(.*?)\s*\n/i) ||
+      [])[1]?.trim();
+    // Fallback if "Project Name" isn't found (older format)
+    if (!title) {
+      title = (magicText.match(/Role\s*\n\s*Role\s*\n\s*(.*?)\s*\n/i) ||
+        [])[1]?.trim();
+    }
+
+    // 2. ROLE
+    // Handles the double "Role\nRole" issue
+    const role = (magicText.match(/Role\s*\n(?:\s*Role\s*\n)?\s*(.*?)\s*\n/i) ||
+      [])[1]?.trim();
+
+    // 3. DATE
     const dateMatch = magicText.match(/Audition Deadline\s*\n\s*(.*?)\s*\n/i);
-    const timeMatch = magicText.match(
-      /Audition Due Time \(Pacific\)\s*\n\s*(.*?)\s*\n/i
-    );
-    let d = "",
-      t = "17:00";
+    let d = "";
     if (dateMatch) {
       const obj = new Date(dateMatch[1].trim());
       if (!isNaN(obj)) d = obj.toISOString().split("T")[0];
     }
+
+    // 4. TIME
+    // Handles "8:00 AM" or "5:00 PM"
+    const timeMatch = magicText.match(
+      /Audition Due Time \(Pacific\)\s*\n\s*(.*?)\s*\n/i
+    );
+    let t = "17:00"; // Default
     if (timeMatch) {
-      const [time, mod] = timeMatch[1].trim().split(" ");
-      let [h, m] = time.split(":");
+      const rawTime = timeMatch[1].trim(); // e.g., "8:00 AM"
+      const [timePart, modifier] = rawTime.split(" ");
+      let [h, m] = timePart.split(":");
+
       if (h === "12") h = "00";
-      if (mod === "PM") h = parseInt(h) + 12;
-      t = `${h}:${m}`;
+      if (modifier === "PM") h = parseInt(h, 10) + 12;
+
+      t = `${String(h).padStart(2, "0")}:${m}`;
     }
+
+    // 5. DIRECTION & LABELING
+    // We combine "Direction", "Audition Slate", AND "Audition Upload" (where the file name is)
+    const directionSection = extract("Direction", "Audition Slate");
+    const slateSection = extract("Audition Slate", "Additional Notes");
+    // Capture the file naming instructions at the bottom
+    const uploadInstructions = extract("Audition Upload", "Terms of Use"); // or end of string
+
+    const fullDirection = [
+      directionSection,
+      slateSection ? `SLATE:\n${slateSection}` : null,
+      uploadInstructions
+        ? `\n----------------\nLABELING & UPLOAD:\n${uploadInstructions}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
     setFormData((prev) => ({
       ...prev,
       client_name: "ASP",
-      project_title:
-        (magicText.match(/Role\s*\n\s*Role\s*\n\s*(.*?)\s*\n/i) ||
-          [])[1]?.trim() || "",
-      rate:
-        (magicText.match(/Rate Breakdown([\s\S]*?)Media Use/i) ||
-          [])[1]?.trim() || "",
+      project_title: title || "",
+      role: role || "",
+      rate: extract("Rate Breakdown", "Media Use"),
       due_date: d,
       due_time: t,
       specs: extract("Specs", "Due"),
-      direction: `${extract("Direction", "Audition Slate")}\n\nSLATE: ${extract("Audition Slate", "Additional Notes")}`,
-      notes: "",
+      direction: fullDirection,
+      notes: extract("Additional Notes", "File Uploads"), // Good for usage terms
     }));
   };
 
   const handleSave = async () => {
-    if (!formData.project_title) return alert("Title required.");
-    setLoading(true);
-    let finalTimestamp = null;
-    if (formData.due_date)
-      finalTimestamp = new Date(
-        `${formData.due_date}T${formData.due_time}`
-      ).toISOString();
-    const payload = { ...formData, due_date: finalTimestamp };
-    delete payload.due_time;
-    let error;
-    if (project?.id) {
-      const res = await supabase
-        .from("11_voiceover_tracker")
-        .update(payload)
-        .eq("id", project.id);
-      error = res.error;
-    } else {
-      const res = await supabase.from("11_voiceover_tracker").insert([payload]);
-      error = res.error;
+    // 1. Basic Validation
+    if (!formData.project_title) {
+      alert("Project Title is required.");
+      return;
     }
-    setLoading(false);
-    if (error) alert(error.message);
-    else {
+
+    setLoading(true);
+
+    try {
+      // 2. Safe Date Parsing
+      let finalTimestamp = null;
+
+      if (formData.due_date) {
+        // Combine date and time (default to 17:00 if time is missing)
+        const timeStr = formData.due_time || "17:00";
+        const dateObj = new Date(`${formData.due_date}T${timeStr}`);
+
+        // Check if date is valid before converting
+        if (isNaN(dateObj.getTime())) {
+          throw new Error(
+            "Invalid Date/Time format. Please check the deadline."
+          );
+        }
+
+        finalTimestamp = dateObj.toISOString();
+      }
+
+      // 3. Prepare Payload
+      const payload = {
+        ...formData,
+        due_date: finalTimestamp,
+        due_time: undefined,
+      };
+
+      delete payload.due_time;
+
+      let error;
+
+      // 4. Supabase Operation
+      if (project?.id) {
+        const res = await supabase
+          .from("11_voiceover_tracker")
+          .update(payload)
+          .eq("id", project.id);
+        error = res.error;
+      } else {
+        const res = await supabase
+          .from("11_voiceover_tracker")
+          .insert([payload]);
+        error = res.error;
+      }
+
+      if (error) throw error;
+
       onSave();
       onClose();
+    } catch (err) {
+      console.error("Save Error:", err);
+      alert(err.message || "An error occurred while saving.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -265,15 +350,15 @@ export default function VoiceoverProjectModal({
               Let's Get Sorted.
             </h3>
             <p className="text-base font-medium text-slate-400 mb-8 max-w-lg mx-auto leading-relaxed">
-              Paste the full email block from{" "}
+              Paste the text from{" "}
               <span className="text-indigo-400 font-bold">ASP</span> or{" "}
-              <span className="text-purple-400 font-bold">IDIOM</span> below.
-              I'll handle the data entry.
+              <span className="text-purple-400 font-bold">IDIOM</span>. I'll
+              handle the data entry.
             </p>
             <textarea
               autoFocus
-              className="w-full flex-grow min-h-[250px] bg-slate-950 border-2 border-slate-800 rounded-2xl p-6 text-sm font-mono text-slate-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none resize-none mb-8 shadow-inner placeholder:text-slate-600 transition-all"
-              placeholder="Paste email text here..."
+              className="w-full flex-grow min-h-[250px] bg-slate-950 border-2 border-slate-800 rounded-2xl p-6 text-xs md:text-sm font-mono text-slate-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none resize-none mb-8 shadow-inner placeholder:text-slate-600 transition-all"
+              placeholder="Paste email or dashboard text here..."
               value={magicText}
               onChange={(e) => setMagicText(e.target.value)}
             />
@@ -295,7 +380,7 @@ export default function VoiceoverProjectModal({
           </div>
         )}
 
-        {/* STEP 2: FORM - GORGEOUS LAYOUT */}
+        {/* STEP 2: FORM */}
         {step === 2 && (
           <div className="overflow-y-auto custom-scrollbar p-8 space-y-12 bg-[#0f172a] pb-32">
             {/* 1. LOGISTICS ROW */}
@@ -430,7 +515,7 @@ export default function VoiceoverProjectModal({
 
             <div className="w-full h-px bg-slate-800/50" />
 
-            {/* 2. CREATIVE STACK (FULL WIDTH) */}
+            {/* 2. CREATIVE STACK */}
             <div className="space-y-8">
               <div>
                 <div className="flex items-center gap-3 mb-4">
@@ -473,7 +558,7 @@ export default function VoiceoverProjectModal({
 
             <div className="w-full h-px bg-slate-800/50" />
 
-            {/* 3. FINANCE STACK (FULL WIDTH) */}
+            {/* 3. FINANCE STACK */}
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-green-500/10 rounded-lg text-green-400">

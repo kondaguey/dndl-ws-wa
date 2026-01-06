@@ -5,6 +5,8 @@ import { createClient } from "@/src/utils/supabase/client";
 import Link from "next/link";
 import VoiceoverProjectModal from "@/src/components/voiceover-tracker/VoiceoverProjectModal";
 import VoiceoverTip from "@/src/components/voiceover-tracker/VoiceoverTip";
+// Imported the new component here:
+import Countdown from "@/src/components/voiceover-tracker/Countdown";
 
 import {
   Mic,
@@ -34,6 +36,7 @@ import {
   Pencil,
   Flame,
   Ban,
+  ArrowLeft, // Added ArrowLeft here as it was missing in your imports previously
 } from "lucide-react";
 
 const supabase = createClient();
@@ -309,43 +312,6 @@ export default function VoiceoverTrackerPage() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) > 7;
   };
 
-  const renderUrgencyBadge = (isoDate) => {
-    if (!isoDate) return null;
-    const hrs = getTimeRemaining(isoDate);
-    if (hrs < 0)
-      return (
-        <span className="flex items-center gap-1 text-[9px] md:text-[10px] font-black uppercase text-red-500 bg-red-500/10 px-2 py-1 rounded border border-red-500/20">
-          <AlertTriangle size={10} /> Overdue
-        </span>
-      );
-    if (hrs < 3)
-      return (
-        <span className="animate-pulse flex items-center gap-1 text-[9px] md:text-[10px] font-black uppercase text-red-400 bg-red-900/20 px-2 py-1 rounded border border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]">
-          <Zap size={10} /> Critical: {Math.ceil(hrs)}h
-        </span>
-      );
-    if (hrs < 12)
-      return (
-        <span className="flex items-center gap-1 text-[9px] md:text-[10px] font-black uppercase text-orange-400 bg-orange-900/20 px-2 py-1 rounded border border-orange-500/30">
-          <Flame size={10} /> Get Ready: {Math.ceil(hrs)}h
-        </span>
-      );
-    if (hrs < 24)
-      return (
-        <span className="flex items-center gap-1 text-[9px] md:text-[10px] font-black uppercase text-blue-400 bg-blue-900/20 px-2 py-1 rounded border border-blue-500/30">
-          <Clock size={10} /> Due Tmrw
-        </span>
-      );
-    return (
-      <span className="text-[9px] md:text-[10px] font-bold text-slate-500 whitespace-nowrap">
-        {new Date(isoDate).toLocaleDateString(undefined, {
-          month: "short",
-          day: "numeric",
-        })}
-      </span>
-    );
-  };
-
   const panicCount = useMemo(() => {
     return items.filter(
       (i) =>
@@ -568,7 +534,7 @@ export default function VoiceoverTrackerPage() {
           color: "slate",
           icon: ArrowLeft,
           action: () => updateStatus(id, "submitted"),
-        }; // ArrowLeft needs import or use RotateCcw
+        };
         break;
       case "delete":
         config = {
@@ -847,8 +813,9 @@ export default function VoiceoverTrackerPage() {
                       )}
                       {/* Mobile Urgency Badge */}
                       <div className="md:hidden ml-auto">
-                        {activeTab === "Auditions" &&
-                          renderUrgencyBadge(item.due_date)}
+                        {activeTab === "Auditions" && (
+                          <Countdown date={item.due_date} />
+                        )}
                       </div>
                     </div>
 
@@ -859,8 +826,9 @@ export default function VoiceoverTrackerPage() {
                           {item.project_title}
                         </h3>
                         <div className="hidden md:block">
-                          {activeTab === "Auditions" &&
-                            renderUrgencyBadge(item.due_date)}
+                          {activeTab === "Auditions" && (
+                            <Countdown date={item.due_date} />
+                          )}
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2 md:gap-4 text-xs text-slate-400 font-medium">
