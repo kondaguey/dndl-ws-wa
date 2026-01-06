@@ -20,6 +20,8 @@ import {
   Play,
   Pause,
   Music,
+  Plus,
+  Mail, // Added Mail icon
 } from "lucide-react";
 
 // --- 1. SUPABASE CONNECTION ---
@@ -30,9 +32,7 @@ const supabase = createClient(
 
 // --- 2. CONFIG ---
 const WORDS_PER_DAY = 6975;
-const CINESONIC_URL = "https://www.cinesonicaudiobooks.com/contact";
 
-// Updated Demo Tracks
 const DEMO_TRACKS = [
   {
     title: "M/F Dialogue",
@@ -222,16 +222,18 @@ export default function SchedulerPage() {
     );
     start.setHours(0, 0, 0, 0);
 
-    // Normalize today for comparison
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     if (start < today) return;
 
     let isBlocked = false;
     for (let i = 0; i < daysNeeded; i++) {
-      const checkDay = new Date(start);
-      checkDay.setDate(start.getDate() + i);
+      const checkDay = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        day + i
+      );
       if (getDateStatus(checkDay) !== "free") {
         isBlocked = true;
         break;
@@ -251,9 +253,10 @@ export default function SchedulerPage() {
     e.preventDefault();
     setLoading(true);
 
+    // 🚨 FIX: Just stop if they try to bypass the UI for multi-voice
     if (["Dual", "Duet", "Multicast"].includes(formData.style)) {
-      window.open(CINESONIC_URL, "_blank");
       setLoading(false);
+      showToast("Please email me for multi-voice projects.", "error");
       return;
     }
 
@@ -312,8 +315,8 @@ export default function SchedulerPage() {
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
     const blanks = Array(firstDay).fill(null);
@@ -336,7 +339,7 @@ export default function SchedulerPage() {
           date.setHours(0, 0, 0, 0);
 
           const status = getDateStatus(date);
-          const isPast = date.getTime() < today.getTime();
+          const isPast = date < today;
           const discount = getDiscountForDate(date);
 
           let base =
@@ -344,7 +347,7 @@ export default function SchedulerPage() {
           let look =
             "bg-white/40 border-white/60 hover:bg-white hover:border-teal-400 hover:shadow-lg cursor-pointer";
           let content = (
-            <span className="text-sm md:text-xl font-bold text-slate-700 group-hover:text-teal-900">
+            <span className="text-sm md:text-xl font-bold text-slate-700 group-hover:text-teal-900 absolute top-1.5 left-1.5 md:relative md:top-auto md:left-auto">
               {day}
             </span>
           );
@@ -352,15 +355,19 @@ export default function SchedulerPage() {
           if (isPast) {
             look =
               "bg-slate-50/50 border-white/10 opacity-40 cursor-not-allowed";
-            content = <span className="text-slate-300 text-xs">{day}</span>;
+            content = (
+              <span className="text-slate-300 text-xs absolute top-1.5 left-1.5 md:relative">
+                {day}
+              </span>
+            );
           } else if (status === "booked") {
             look = "bg-red-50/80 border-red-100 cursor-not-allowed";
             content = (
               <>
-                <span className="text-red-300 text-[10px] md:text-xs absolute top-1 md:top-2 left-1 md:left-2">
+                <span className="text-red-300 text-[10px] md:text-xs absolute top-1.5 left-1.5">
                   {day}
                 </span>
-                <span className="text-red-400/80 text-[6px] md:text-[10px] md:text-xs font-black uppercase -rotate-12 tracking-wider">
+                <span className="text-red-400/80 text-[6px] md:text-[10px] md:text-xs font-black uppercase -rotate-12 tracking-wider md:static absolute bottom-1 right-1">
                   Booked
                 </span>
               </>
@@ -377,9 +384,13 @@ export default function SchedulerPage() {
               {content}
               {!isPast && status === "free" && discount && (
                 <div
-                  // 🚨 1. FIX: Changed 'top-1 right-1' to 'top-2 right-2'
-                  // This prevents the rounded corners from clipping the dots on mobile
-                  className={`absolute top-2 right-2 md:top-2 md:right-2 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${discount.color} z-10`}
+                  className={`absolute top-2 right-2 md:top-2 md:right-2 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${discount.color} z-10 shadow-sm`}
+                />
+              )}
+              {!isPast && status === "free" && (
+                <Plus
+                  size={12}
+                  className="hidden md:block absolute bottom-1 right-1 text-teal-400 opacity-0 group-hover:opacity-100 transition-opacity"
                 />
               )}
             </button>
@@ -593,7 +604,6 @@ export default function SchedulerPage() {
             {/* Calendar takes remaining height */}
             <div className="flex-grow">{renderCalendar()}</div>
 
-            {/* 🚨 2. FIX: 'grid grid-cols-2 md:flex' for 2x2 key on mobile */}
             <div className="mt-8 grid grid-cols-2 md:flex md:flex-wrap md:justify-center gap-2 md:gap-3 border-t border-slate-200/30 pt-8">
               {[
                 { label: "5%", color: "bg-teal-500" },
@@ -742,19 +752,22 @@ export default function SchedulerPage() {
               </select>
             </div>
 
+            {/* 🚨 FIX: Updated message per instructions */}
             {["Dual", "Duet", "Multicast"].includes(formData.style) ? (
-              <div className="p-8 bg-indigo-50 rounded-3xl border border-indigo-100 text-center">
-                <p className="text-indigo-900 font-bold text-base mb-6">
-                  Multi-voice projects handled via CineSonic.
+              <div className="p-8 bg-indigo-50 rounded-3xl border border-indigo-100 text-center animate-fade-in">
+                <p className="text-indigo-900 font-bold text-lg mb-4">
+                  Multi-voice requires a custom setup.
                 </p>
-                <a
-                  href={CINESONIC_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-3 bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-500/30"
-                >
-                  Go to CineSonic <ExternalLink size={14} />
-                </a>
+                <p className="text-slate-600 text-sm mb-6">
+                  Please email me directly to discuss casting and production
+                  options.
+                </p>
+                <div className="bg-white p-4 rounded-xl border border-indigo-100 shadow-sm flex items-center justify-center gap-3">
+                  <Mail size={16} className="text-indigo-600" />
+                  <span className="font-black text-slate-800 select-all">
+                    dm@danielnotdaylewis.com
+                  </span>
+                </div>
               </div>
             ) : (
               <div className="space-y-6 md:space-y-8">
