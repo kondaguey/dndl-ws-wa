@@ -97,7 +97,7 @@ const AudiobookButton = ({ mobile = false, onClick }) => (
       ${
         mobile
           ? "w-full max-w-xs py-4 text-center mt-4 flex-shrink-0 whitespace-nowrap block"
-          : "px-5 py-2 hidden lg:block"
+          : "px-5 py-2 hidden lg:block flex-shrink-0"
       }
     `}
   >
@@ -243,16 +243,15 @@ export default function Navbar() {
           `}
         >
           {/* --- LEFT: LOGO & TICKER --- */}
-          <div className="flex items-center gap-2 md:gap-8 flex-1 md:flex-none">
+          {/* FIX 1: Changed md:flex-none to min-w-0 to allow shrinking */}
+          <div className="flex items-center gap-2 md:gap-8 flex-1 min-w-0">
             <Link
               href={user ? "/admin" : "/"}
               className="relative z-50 flex items-center group cursor-pointer flex-shrink-0"
-              target="_blank"
+              // FIX: Only open in new tab if user is logged in (going to /admin)
+              target={user ? "_blank" : undefined}
             >
-              {/* 🚨 LOGO ANIMATION (SLOW - 10s) 
-                  We use `animate-[gradient-x_10s_ease_infinite]` to force the 10s speed 
-                  and bypass the mobile restrictions in your CSS file.
-              */}
+              {/* 🚨 LOGO ANIMATION (SLOW - 10s) */}
               <h1 className="font-black tracking-tighter leading-none text-lg md:text-xl lg:text-2xl transition-transform duration-300 group-hover:scale-[1.02] text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-teal-400 to-indigo-500 bg-[length:200%_auto] animate-[gradient-x_10s_ease_infinite] drop-shadow-sm">
                 <span className="md:hidden font-extrabold">D(nD)L</span>
                 <span className="hidden md:inline pr-1">
@@ -265,7 +264,8 @@ export default function Navbar() {
           </div>
 
           {/* --- RIGHT: NAV ITEMS --- */}
-          <div className="flex items-center gap-3 md:gap-5 flex-shrink-0">
+          {/* Kept flex-shrink-0 to ensure search/buttons don't get squashed */}
+          <div className="flex items-center gap-3 md:gap-5 flex-shrink-0 pl-2">
             {/* DESKTOP LINKS */}
             <nav className="hidden md:flex items-center gap-4 lg:gap-6 xl:gap-8">
               {navLinks.map((link) => (
@@ -274,7 +274,7 @@ export default function Navbar() {
                   href={link.href}
                   className="relative group py-2"
                 >
-                  <span className="text-xs font-black uppercase tracking-widest text-slate-800 hover:text-teal-600 transition-colors">
+                  <span className="text-xs font-black uppercase tracking-widest text-slate-800 hover:text-teal-600 transition-colors whitespace-nowrap">
                     {link.name}
                   </span>
                   <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-teal-400 transition-all duration-300 group-hover:w-full"></span>
@@ -294,7 +294,7 @@ export default function Navbar() {
                   type="button"
                   aria-label="Open search"
                   onClick={() => setIsSearchOpen(!isSearchOpen)}
-                  className="focus:outline-none text-slate-500 hover:text-teal-600 transition-colors"
+                  className="focus:outline-none text-slate-500 hover:text-teal-600 transition-colors flex-shrink-0"
                 >
                   <AnimatedMagnifyingGlass />
                 </button>
@@ -317,7 +317,7 @@ export default function Navbar() {
                       setResults([]);
                       setIsSearchOpen(false);
                     }}
-                    className="group ml-1 p-0.5 rounded-full hover:bg-slate-100 transition-all duration-200"
+                    className="group ml-1 p-0.5 rounded-full hover:bg-slate-100 transition-all duration-200 flex-shrink-0"
                   >
                     <X
                       size={14}
