@@ -1,22 +1,13 @@
-import { createClient } from "../../../../utils/supabase/server";
+import { createClient } from "@/src/utils/supabase/server";
 import { createClient as createBrowserClient } from "@supabase/supabase-js";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  Calendar,
-  Tag,
-  ChevronLeft,
-  ArrowRight,
-  Clock,
-  Mail,
-} from "lucide-react";
-import PopularPosts from "../../../../components/marketing/PostsWidget";
+import { Calendar, Tag, Clock, Mail, ArrowRight } from "lucide-react";
+import PopularPosts from "@/src/components/marketing/PostsWidget";
 import ViewCounter from "./ViewCounter";
-import GalleryCarousel from "@/src/components/vibe-writer/GalleryCarousel"; // NEW IMPORT
-
-// --- PARSER IMPORT ---
-import parse, { domToReact } from "html-react-parser";
+import GalleryCarousel from "@/src/components/vibe-writer/GalleryCarousel";
+import parse from "html-react-parser";
 
 // 1. STATIC PARAMS
 export async function generateStaticParams() {
@@ -89,20 +80,18 @@ const contentParserOptions = {
                   className="absolute inset-0 w-full h-full"
                   allowFullScreen
                   title="Embedded Video"
+                  loading="lazy" // Lazy load iframe
                 />
               </div>
             </figure>
           );
         }
 
-        // --- B. AUDIO MODE (Explicit) ---
+        // --- B. AUDIO MODE ---
         if (innerContent.startsWith("audio:")) {
           const rawUrl = innerContent.replace("audio:", "").trim();
-
-          // Spotify Handling
           if (rawUrl.includes("spotify.com")) {
             let embedUrl = rawUrl;
-            // Ensure embed format for Spotify
             if (!rawUrl.includes("/embed/")) {
               embedUrl = rawUrl.replace(".com/", ".com/embed/");
             }
@@ -121,8 +110,6 @@ const contentParserOptions = {
               </figure>
             );
           }
-
-          // Native Audio
           return (
             <figure className="my-8 w-full md:w-2/3 mx-auto clear-both !block">
               <audio
@@ -154,12 +141,12 @@ const contentParserOptions = {
           return <GalleryCarousel images={urls} caption={caption} />;
         }
 
-        // --- D. IMAGE MODE (With Audio Rescue) ---
+        // --- D. IMAGE MODE ---
         if (innerContent.startsWith("image:")) {
           const parts = innerContent.replace("image:", "").split("|");
           let url = parts[0].trim();
 
-          // 🚨 THE FIX: Check if this "image" is actually an audio file
+          // Audio Rescue
           if (url.match(/\.(mp3|wav|ogg|m4a)($|\?)/i)) {
             return (
               <figure className="my-8 w-full md:w-2/3 mx-auto clear-both !block">
@@ -185,7 +172,7 @@ const contentParserOptions = {
             );
           }
 
-          // Normal Image Logic
+          // Image Parsing
           let sizeClass = "w-full md:w-2/3";
           let alignClass = "!block mx-auto";
           let caption = null;
@@ -210,12 +197,15 @@ const contentParserOptions = {
             <figure
               className={`group relative ${alignClass} ${sizeClass} my-8`}
             >
-              <div className="rounded-xl overflow-hidden shadow-2xl leading-none w-full bg-gray-100">
-                <img
+              <div className="rounded-xl overflow-hidden shadow-2xl leading-none w-full bg-gray-100 relative">
+                <Image
                   src={url}
-                  alt={caption || "blog"} // This is where "blog" came from!
-                  className="block w-full h-auto object-cover !m-0 !p-0"
-                  loading="lazy"
+                  alt={caption || "blog image"}
+                  width={1200}
+                  height={800}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 75vw, 1200px"
+                  className="block w-full h-auto object-cover"
+                  style={{ width: "100%", height: "auto" }}
                 />
               </div>
               {caption && (
@@ -246,17 +236,23 @@ export default async function BlogPost({ params }) {
     notFound();
   }
 
-  const { wordCount, readTime } = calculateReadingStats(post.content);
+  const { readTime } = calculateReadingStats(post.content);
 
   return (
-    <div className="min-h-screen w-full relative selection:bg-teal-200 selection:text-teal-900 overflow-hidden">
+    // 🚨 1. FIX: Added overflow-x-hidden to prevent horizontal scroll drift
+    <div className="min-h-screen w-full relative selection:bg-teal-200 selection:text-teal-900 overflow-x-hidden">
       <ViewCounter slug={slug} />
 
-      {/* --- GLOBAL DREAMY BACKGROUND --- */}
+      {/* --- BACKGROUND LAYER OPTIMIZED --- */}
       <div className="fixed inset-0 z-[-1]">
+        {/* Base Gradient (Always Visible, Cheap) */}
         <div className="absolute inset-0 bg-gradient-to-br from-white via-slate-50 to-teal-50/40" />
-        <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-teal-200/20 rounded-full blur-[120px] mix-blend-multiply opacity-70" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-indigo-200/20 rounded-full blur-[120px] mix-blend-multiply opacity-70" />
+
+        {/* 🚨 2. FIX: Heavy Blur Blobs HIDDEN on Mobile (hidden md:block) 
+           This removes the GPU bottleneck that causes text to disappear on scroll.
+        */}
+        <div className="hidden md:block absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-teal-200/20 rounded-full blur-[120px] mix-blend-multiply opacity-70" />
+        <div className="hidden md:block absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-indigo-200/20 rounded-full blur-[120px] mix-blend-multiply opacity-70" />
       </div>
 
       {/* --- HERO SECTION --- */}
@@ -271,6 +267,7 @@ export default async function BlogPost({ params }) {
                 fill
                 className="object-cover"
                 priority
+                sizes="100vw"
               />
             </div>
             {post.image_caption && (
@@ -309,7 +306,7 @@ export default async function BlogPost({ params }) {
         </div>
       </div>
 
-      {/* --- MAIN CONTENT WITH PARSER --- */}
+      {/* --- MAIN CONTENT --- */}
       <article className="max-w-4xl mx-auto px-4 md:px-6 py-4 md:py-8 animate-fade-in">
         <div className="blog-content flow-root prose prose-lg prose-slate max-w-none mx-auto prose-img:rounded-xl prose-headings:text-teal-900 prose-a:text-indigo-600">
           {post.content ? (
@@ -325,6 +322,13 @@ export default async function BlogPost({ params }) {
       {/* --- POPULAR POSTS WIDGET --- */}
       <div className="w-full px-4 md:px-6 py-16 clear-both">
         <div className="max-w-7xl mx-auto">
+          <div className="flex items-center gap-4 mb-12">
+            <div className="h-px bg-slate-200 flex-1" />
+            <span className="text-xs font-black uppercase tracking-widest text-slate-300">
+              More to Read
+            </span>
+            <div className="h-px bg-slate-200 flex-1" />
+          </div>
           <PopularPosts currentSlug={slug} />
         </div>
       </div>

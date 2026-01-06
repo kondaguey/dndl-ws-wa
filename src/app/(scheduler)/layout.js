@@ -9,7 +9,7 @@ export default function SchedulerLayout({ children }) {
       {/* Adding pt-32 to account for the fixed navbar 
           so the scheduler content isn't hidden behind it.
       */}
-      <main className="flex-grow w-full max-w-[100vw] overflow-x-hidden pt-32 md:pt-40">
+      <main className="flex-grow w-full max-w-[100vw] overflow-x-hidden pt-10 md:pt-40">
         {children}
       </main>
       <Footer />

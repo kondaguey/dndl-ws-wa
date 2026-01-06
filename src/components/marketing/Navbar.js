@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Menu, X, ArrowRight, Mic, Plane } from "lucide-react";
-import { createClient } from "../../utils/supabase/client";
+import { createClient } from "@/src/utils/supabase/client";
 
-// --- GREETINGS ARRAY (Static) ---
+// --- GREETINGS ARRAY ---
 const greetings = [
   "Welcome, traveler",
   "환영합니다, 여행자여",
@@ -24,7 +24,7 @@ function GreetingTicker({ scrolled }) {
       setIndex((prev) => (prev + 1) % greetings.length);
     }, 2500);
     return () => clearInterval(interval);
-  }, []); // Empty dependency array is safe now
+  }, []);
 
   return (
     <div className="flex items-center gap-2 h-full">
@@ -85,7 +85,7 @@ const AnimatedMagnifyingGlass = ({ className }) => (
   </svg>
 );
 
-// --- AUDIOBOOK COMPONENT ---
+// --- AUDIOBOOK BUTTON ---
 const AudiobookButton = ({ mobile = false, onClick }) => (
   <Link
     href="/scheduler"
@@ -107,35 +107,56 @@ const AudiobookButton = ({ mobile = false, onClick }) => (
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [user, setUser] = useState(null); // User State
 
-  // --- SEARCH STATE ---
+  // Search State
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [allContent, setAllContent] = useState([]);
+
   const searchRef = useRef(null);
   const router = useRouter();
   const pathname = usePathname();
+  const supabase = createClient();
 
+  // 1. ROBUST AUTH CHECK (Listener)
+  useEffect(() => {
+    // Initial check
+    const checkUser = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setUser(session?.user || null);
+    };
+    checkUser();
+
+    // Listen for changes (Sign out, Sign in, Auto-refresh)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Reset UI on route change
   useEffect(() => {
     setIsOpen(false);
     setIsSearchOpen(false);
     setQuery("");
   }, [pathname]);
 
-  // Lock body scroll when mobile menu is open
+  // Lock scroll
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
+    document.body.style.overflow = isOpen ? "hidden" : "unset";
     return () => {
       document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
-  // Fetch content for search
+  // Fetch Search Data
   useEffect(() => {
     const fetchSearchData = async () => {
       const staticPages = [
@@ -145,9 +166,7 @@ export default function Navbar() {
         { title: "Collab", slug: "/collab", tag: "Contact" },
         { title: "Schedule / Audiobook", slug: "/schedule", tag: "Booking" },
       ];
-
       try {
-        const supabase = createClient();
         const { data } = await supabase
           .from("posts")
           .select("title, slug, tag");
@@ -166,14 +185,14 @@ export default function Navbar() {
     fetchSearchData();
   }, []);
 
-  // Handle Scroll
+  // Scroll Listener
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Filter Search Results
+  // Search Filtering
   useEffect(() => {
     if (query.length > 0 && allContent.length > 0) {
       const lowerQuery = query.toLowerCase();
@@ -188,7 +207,7 @@ export default function Navbar() {
     }
   }, [query, allContent]);
 
-  // Click Outside to Close Search
+  // Click Outside Search
   useEffect(() => {
     function handleClickOutside(event) {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -202,9 +221,7 @@ export default function Navbar() {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (results.length > 0) {
-      router.push(results[0].slug);
-    }
+    if (results.length > 0) router.push(results[0].slug);
   };
 
   const navLinks = [
@@ -217,8 +234,7 @@ export default function Navbar() {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-300 ease-in-out pointer-events-none
-        ${scrolled ? "md:pt-4" : "md:pt-8"}`}
+        className={`fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-300 ease-in-out pointer-events-none ${scrolled ? "md:pt-4" : "md:pt-8"}`}
       >
         <div
           className={`
@@ -235,7 +251,12 @@ export default function Navbar() {
         >
           {/* --- LEFT: LOGO & TICKER --- */}
           <div className="flex items-center gap-4 md:gap-8">
-            <Link href="/" className="relative z-50 flex items-center group">
+            {/* 🚨 SNEAKY ADMIN LINK */}
+            <Link
+              href={user ? "/admin" : "/"}
+              className="relative z-50 flex items-center group cursor-pointer"
+              title={user ? "Mission Control" : "Home"}
+            >
               <h1 className="font-black tracking-tighter leading-none text-lg md:text-xl lg:text-2xl transition-transform duration-300 group-hover:scale-[1.02] text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-teal-400 to-indigo-500 animate-gradient-x drop-shadow-sm">
                 <span className="md:hidden font-extrabold">D(nD)L</span>
                 <span className="hidden md:inline pr-1">
@@ -244,7 +265,6 @@ export default function Navbar() {
               </h1>
             </Link>
 
-            {/* TICKER */}
             <GreetingTicker scrolled={scrolled} />
           </div>
 
@@ -268,15 +288,11 @@ export default function Navbar() {
 
             <div className="hidden md:block h-5 w-[1px] bg-slate-400/20"></div>
 
-            {/* DESKTOP SEARCH BAR */}
+            {/* SEARCH */}
             <div ref={searchRef} className="relative z-50 hidden md:block">
               <form
                 onSubmit={handleSearchSubmit}
-                className={`flex items-center gap-2 rounded-full px-3 py-1.5 transition-all duration-300 ${
-                  isSearchOpen
-                    ? "bg-white ring-2 ring-teal-100 w-full shadow-lg"
-                    : "bg-slate-100/50 hover:bg-white/80 border border-transparent hover:border-white/50"
-                }`}
+                className={`flex items-center gap-2 rounded-full px-3 py-1.5 transition-all duration-300 ${isSearchOpen ? "bg-white ring-2 ring-teal-100 w-full shadow-lg" : "bg-slate-100/50 hover:bg-white/80 border border-transparent hover:border-white/50"}`}
               >
                 <button
                   type="button"
@@ -286,7 +302,6 @@ export default function Navbar() {
                 >
                   <AnimatedMagnifyingGlass />
                 </button>
-
                 <input
                   type="text"
                   value={query}
@@ -296,10 +311,8 @@ export default function Navbar() {
                   }}
                   onFocus={() => setIsSearchOpen(true)}
                   placeholder="SEARCH"
-                  className={`bg-transparent text-base md:text-xs font-bold uppercase tracking-wider outline-none placeholder:text-slate-400 transition-all duration-300 
-                    ${isSearchOpen ? "w-32 md:w-40 opacity-100 text-slate-800 pl-1" : "w-0 opacity-0"}`}
+                  className={`bg-transparent text-base md:text-xs font-bold uppercase tracking-wider outline-none placeholder:text-slate-400 transition-all duration-300 ${isSearchOpen ? "w-32 md:w-40 opacity-100 text-slate-800 pl-1" : "w-0 opacity-0"}`}
                 />
-
                 {isSearchOpen && (
                   <button
                     type="button"
@@ -318,7 +331,6 @@ export default function Navbar() {
                   </button>
                 )}
               </form>
-
               {query && isSearchOpen && (
                 <div className="absolute top-full right-0 mt-3 w-72 rounded-xl border border-gray-100 bg-white/90 backdrop-blur-xl shadow-xl overflow-hidden flex flex-col">
                   {results.length > 0 ? (
@@ -355,10 +367,8 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* DESKTOP AUDIOBOOK BUTTON */}
             <AudiobookButton onClick={() => setIsOpen(false)} />
 
-            {/* MOBILE HAMBURGER */}
             <button
               className="md:hidden p-2 text-slate-800"
               aria-label="Open menu"
@@ -370,10 +380,9 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* --- MOBILE FULLSCREEN MENU --- */}
+      {/* MOBILE MENU */}
       <div
-        className={`fixed inset-0 z-[60] bg-white/95 backdrop-blur-xl transition-all duration-300
-        ${isOpen ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"}`}
+        className={`fixed inset-0 z-[60] bg-white/95 backdrop-blur-xl transition-all duration-300 ${isOpen ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"}`}
       >
         <div className="w-full h-full overflow-y-auto flex flex-col items-center pt-24 pb-12 px-6 gap-8">
           <button
@@ -386,7 +395,6 @@ export default function Navbar() {
               className="text-slate-400 group-hover:text-teal-500 group-hover:rotate-90 transition-transform duration-300 ease-out"
             />
           </button>
-
           {navLinks.map((link) => (
             <Link
               key={link.name}
@@ -397,7 +405,6 @@ export default function Navbar() {
               {link.name}
             </Link>
           ))}
-
           <AudiobookButton mobile={true} onClick={() => setIsOpen(false)} />
         </div>
       </div>

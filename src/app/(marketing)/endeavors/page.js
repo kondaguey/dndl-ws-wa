@@ -127,8 +127,8 @@ function EndeavorCard({ item, delay }) {
           isActive
             ? "bg-white border-white/60 hover:shadow-2xl hover:-translate-y-1 cursor-pointer"
             : isLaunching
-            ? "bg-[#020014] border-[#bf953f]/30 cursor-default hover:border-[#bf953f]/60" // Launching style (Dark & Gold)
-            : "bg-slate-50 border-slate-200/50 cursor-not-allowed grayscale opacity-90 hover:opacity-100" // Dev style (Gray)
+              ? "bg-[#020014] border-[#bf953f]/30 cursor-default hover:border-[#bf953f]/60" // Launching style (Dark & Gold)
+              : "bg-slate-50 border-slate-200/50 cursor-not-allowed grayscale opacity-90 hover:opacity-100" // Dev style (Gray)
         }`}
       >
         {/* --- IMAGE AREA --- */}
@@ -160,8 +160,8 @@ function EndeavorCard({ item, delay }) {
                 isActive
                   ? "bg-white/95 text-teal-800 border-white/20"
                   : isLaunching
-                  ? "bg-[#bf953f]/20 text-[#bf953f] border-[#bf953f]/40 shadow-[0_0_15px_rgba(191,149,63,0.2)] animate-pulse" // GLOWING GOLD
-                  : "bg-slate-900/80 text-amber-500 border-white/10"
+                    ? "bg-[#bf953f]/20 text-[#bf953f] border-[#bf953f]/40 shadow-[0_0_15px_rgba(191,149,63,0.2)] animate-pulse" // GLOWING GOLD
+                    : "bg-slate-900/80 text-amber-500 border-white/10"
               }`}
             >
               <div
@@ -169,8 +169,8 @@ function EndeavorCard({ item, delay }) {
                   isActive
                     ? "bg-teal-500 animate-pulse"
                     : isLaunching
-                    ? "bg-[#bf953f] shadow-[0_0_8px_#bf953f]" // Gold Dot
-                    : "bg-amber-500 animate-pulse"
+                      ? "bg-[#bf953f] shadow-[0_0_8px_#bf953f]" // Gold Dot
+                      : "bg-amber-500 animate-pulse"
                 }`}
               />
               {item.status}
@@ -182,8 +182,8 @@ function EndeavorCard({ item, delay }) {
                 isActive
                   ? "bg-white/20 text-white group-hover:bg-white group-hover:text-slate-900 group-hover:scale-110"
                   : isLaunching
-                  ? "bg-black/50 text-[#bf953f] border-[#bf953f]/30" // Gold Lock
-                  : "bg-slate-900/60 text-slate-500"
+                    ? "bg-black/50 text-[#bf953f] border-[#bf953f]/30" // Gold Lock
+                    : "bg-slate-900/60 text-slate-500"
               }`}
             >
               {isActive ? (

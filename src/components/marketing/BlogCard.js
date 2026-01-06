@@ -4,7 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Calendar, ArrowRight, Tag, Clock, Eye } from "lucide-react";
 
-export default function BlogCard({ post, delay = 0 }) {
+// 🚨 FIX: Added 'priority' to props so it is defined
+export default function BlogCard({ post, delay = 0, priority = false }) {
   const readTime = post.content
     ? Math.ceil(post.content.split(/\s+/).length / 225)
     : 1;
@@ -35,10 +36,9 @@ export default function BlogCard({ post, delay = 0 }) {
                 src={post.image}
                 alt={post.title}
                 fill
-                // 🚨 CHANGED: Adjusted mobile size from 100vw to 90vw to match actual card width with padding
+                // 🚨 FIX: Now works because 'priority' comes from props above
+                priority={priority}
                 sizes="(max-width: 768px) 90vw, (max-width: 1200px) 50vw, 33vw"
-                decoding="async"
-                quality={75}
                 className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
               />
 
@@ -53,7 +53,7 @@ export default function BlogCard({ post, delay = 0 }) {
 
             {/* CONTENT AREA */}
             <div className="p-5 flex flex-col flex-grow bg-white border-t border-slate-100">
-              {/* META ROW - Fixed Contrast: Changed slate-400 to slate-500/600 */}
+              {/* META ROW */}
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 <div className="flex items-center gap-1 text-[10px] font-bold uppercase text-slate-500">
                   <Calendar size={10} className="text-indigo-500" />
@@ -80,7 +80,7 @@ export default function BlogCard({ post, delay = 0 }) {
                 {post.title}
               </h3>
 
-              {/* FOOTER - Fixed Contrast: Changed slate-300 to slate-400 */}
+              {/* FOOTER */}
               <div className="mt-auto pt-4 border-t border-slate-50">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-teal-600 transition-colors">

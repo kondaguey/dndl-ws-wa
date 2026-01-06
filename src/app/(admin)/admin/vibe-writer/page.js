@@ -495,11 +495,6 @@ ON CONFLICT (slug) DO UPDATE SET title = EXCLUDED.title, content = EXCLUDED.cont
         </div>
       )}
 
-      {/* --- BACK BUTTON (Fixed Position) --- */}
-      <Link href="/" className={themeStyle.backBtn}>
-        <LogOut size={14} /> Exit Studio
-      </Link>
-
       {/* --- SCROLLABLE INNER CONTAINER --- 
           Mobile: Takes up full locked shell, handles own scroll.
           Desktop: Just a wrapper, lets browser handle scroll.

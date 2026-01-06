@@ -43,7 +43,6 @@ export default function PopulateMeta({
 
   return (
     <div
-      // 🚨 RESPONSIVE FIX: Changed p-8 to 'p-5 md:p-8' to save space on mobile
       className={`p-5 md:p-8 rounded-[2.5rem] border-2 mb-8 ${
         isDark
           ? `bg-black/20 backdrop-blur-md ${themeBorderClass} border-opacity-60`
@@ -51,13 +50,13 @@ export default function PopulateMeta({
       }`}
     >
       <div className="space-y-6">
-        {/* ROW 1: Date & Author 
-            🚨 RESPONSIVE FIX: 'flex-col md:flex-row' 
-            This forces them to stack vertically on mobile (fixing the overlap) 
-            and sit side-by-side on desktop.
-        */}
-        <div className="flex flex-col md:flex-row gap-4 md:gap-2">
-          <div className="relative flex-1">
+        {/* ROW 1: Date & Author */}
+        <div className="flex flex-col md:flex-row gap-4 md:gap-2 w-full">
+          {/* 🚨 FIX: Added 'w-full' and 'min-w-0'.
+             'min-w-0' is critical here. It allows the flex item to shrink smaller 
+             than the native iOS date picker's intrinsic width, preventing overflow.
+          */}
+          <div className="relative w-full md:flex-1 min-w-0">
             <Calendar
               size={14}
               className={`absolute left-4 top-4 ${isDark ? "text-slate-500" : "text-slate-400"}`}
@@ -66,14 +65,15 @@ export default function PopulateMeta({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className={`w-full p-3 pl-10 rounded-xl text-xs font-bold uppercase bg-transparent border-2 outline-none ${
+              className={`w-full min-w-0 p-3 pl-10 rounded-xl text-xs font-bold uppercase bg-transparent border-2 outline-none ${
                 isDark
                   ? "border-white/10 text-slate-300"
                   : "border-slate-200 text-slate-700"
               }`}
             />
           </div>
-          <div className="relative flex-1">
+
+          <div className="relative w-full md:flex-1 min-w-0">
             <User
               size={14}
               className={`absolute left-4 top-4 ${isDark ? "text-slate-500" : "text-slate-400"}`}
@@ -83,7 +83,7 @@ export default function PopulateMeta({
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
               placeholder="Author"
-              className={`w-full p-3 pl-10 rounded-xl text-xs font-bold uppercase bg-transparent border-2 outline-none ${
+              className={`w-full min-w-0 p-3 pl-10 rounded-xl text-xs font-bold uppercase bg-transparent border-2 outline-none ${
                 isDark
                   ? "border-white/10 text-slate-300 placeholder-slate-600"
                   : "border-slate-200 text-slate-700 placeholder-slate-400"
@@ -93,7 +93,7 @@ export default function PopulateMeta({
         </div>
 
         {/* ROW 2: URL Slug */}
-        <div className="relative">
+        <div className="relative w-full">
           <Globe
             size={14}
             className={`absolute left-4 top-4 ${isDark ? "text-slate-500" : "text-slate-400"}`}
@@ -102,7 +102,7 @@ export default function PopulateMeta({
             value={urlPath}
             onChange={(e) => setUrlPath(e.target.value)}
             placeholder="URL Slug"
-            className={`w-full p-3 pl-10 rounded-xl text-xs font-bold bg-transparent border-2 outline-none ${
+            className={`w-full min-w-0 p-3 pl-10 rounded-xl text-xs font-bold bg-transparent border-2 outline-none ${
               isDark
                 ? "border-white/10 focus:border-teal-500 text-white placeholder-slate-600"
                 : "border-slate-200 text-slate-800 placeholder-slate-400"
@@ -135,7 +135,7 @@ export default function PopulateMeta({
             Hero Image
           </label>
 
-          <div className="relative">
+          <div className="relative w-full">
             <ImageIcon
               size={14}
               className={`absolute left-4 top-3.5 ${isDark ? "text-slate-500" : "text-slate-400"}`}
@@ -144,7 +144,7 @@ export default function PopulateMeta({
               value={heroImage || ""}
               readOnly
               placeholder="No Hero Image Uploaded"
-              className={`w-full p-3 pl-10 bg-transparent border-2 rounded-xl outline-none text-[10px] font-mono ${
+              className={`w-full min-w-0 p-3 pl-10 bg-transparent border-2 rounded-xl outline-none text-[10px] font-mono ${
                 isDark
                   ? "border-white/10 text-white placeholder-slate-600"
                   : "border-slate-200 text-slate-800 placeholder-slate-400"
@@ -194,7 +194,7 @@ export default function PopulateMeta({
         </div>
 
         {/* ROW 5: Hero Caption */}
-        <div className="relative">
+        <div className="relative w-full">
           <Type
             size={14}
             className={`absolute left-4 top-4 ${isDark ? "text-slate-500" : "text-slate-400"}`}
@@ -203,7 +203,7 @@ export default function PopulateMeta({
             value={imageCaption}
             onChange={(e) => setImageCaption(e.target.value)}
             placeholder="Hero Image Caption"
-            className={`w-full p-3 pl-10 bg-transparent border-2 rounded-xl outline-none text-xs font-bold ${
+            className={`w-full min-w-0 p-3 pl-10 bg-transparent border-2 rounded-xl outline-none text-xs font-bold ${
               isDark
                 ? "border-white/10 text-white placeholder-slate-600"
                 : "border-slate-200 text-slate-800 placeholder-slate-400"

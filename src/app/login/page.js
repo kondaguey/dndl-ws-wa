@@ -16,7 +16,7 @@ function LoginContent() {
   const supabase = createClient();
 
   // This is the dynamic part: it looks for ?next= in the URL
-  const nextPath = searchParams.get("next") || "/admin/production-manager";
+  const nextPath = searchParams.get("next") || "/admin";
 
   const handleLogin = async (e) => {
     e.preventDefault();

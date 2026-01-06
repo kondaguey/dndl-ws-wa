@@ -440,7 +440,8 @@ function VibeToolbar({ bgOpacity, setBgOpacity }) {
           <AlignRight size={18} />
         </button>
 
-        <div className="flex items-center gap-2 mr-4 border-r theme-border-dim pr-4 hidden md:flex">
+        {/* 🚨 FIX: Removed 'hidden md:flex' so opacity slider stays visible on mobile */}
+        <div className="flex items-center gap-2 mr-4 border-r theme-border-dim pr-4">
           <Ghost size={16} className="theme-text-dim" />
           <input
             type="range"

@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { Feather } from "lucide-react";
-import { createClient } from "@/src/utils/supabase/server"; // Use Server Client
+import { createClient } from "@/src/utils/supabase/server";
 import BlogCard from "@/src/components/marketing/BlogCard";
 
-// 1. DEFINE METADATA (The Fix for your SEO Score)
 export const metadata = {
   title: "Blog | Daniel Lewis",
   description:
@@ -15,9 +14,7 @@ export const metadata = {
   },
 };
 
-// 2. SERVER COMPONENT (Async)
 export default async function BlogIndexPage() {
-  // 3. FETCH ON SERVER (Faster & Better for Crawlers)
   const supabase = await createClient();
 
   const { data: posts } = await supabase
@@ -25,18 +22,16 @@ export default async function BlogIndexPage() {
     .select("*")
     .eq("published", true)
     .order("views", { ascending: false });
-  //.order("created_at", { ascending: false }); // Secondary sort
 
   return (
     <div className="pt-24 md:pt-40 relative min-h-screen w-full bg-slate-50 pb-24 px-4 overflow-hidden">
-      {/* ATMOSPHERE */}
+      {/* ATMOSPHERE - 🚨 FIX: Reduced blur radius for Mobile Performance */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-teal-100/40 blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-100/40 blur-[120px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-teal-100/40 blur-[80px] md:blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-100/40 blur-[80px] md:blur-[120px]" />
       </div>
 
       <div className="relative z-10 max-w-[90rem] mx-auto">
-        {/* Header */}
         <header className="text-center mb-16 max-w-2xl mx-auto animate-fade-in relative">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm mb-6">
             <Feather size={12} className="text-teal-600" />
@@ -57,7 +52,14 @@ export default async function BlogIndexPage() {
         {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-2 md:px-0">
           {posts?.map((post, index) => (
-            <BlogCard key={post.slug} post={post} delay={index * 0.1} />
+            <BlogCard
+              key={post.slug}
+              post={post}
+              delay={index * 0.1}
+              // 🚨 THE FIX: Force the first 6 images to load IMMEDIATELY (Server Side)
+              // This prevents the white flash/pop-in on mobile load.
+              priority={index < 6}
+            />
           ))}
           {!posts?.length && (
             <p className="col-span-full text-center text-slate-400">

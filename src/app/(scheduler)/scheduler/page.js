@@ -426,7 +426,8 @@ export default function SchedulerPage() {
           </span>
         </h1>
         <p className="text-slate-500 text-base md:text-lg font-medium max-w-lg mx-auto">
-          Enter word count to calculate timeline, then select a start date.
+          Please enter word count to calculate timeline, then select a start
+          date.
         </p>
       </div>
 
