@@ -36,17 +36,14 @@ const CINESONIC_URL = "https://www.cinesonicaudiobooks.com/contact";
 const DEMO_TRACKS = [
   {
     title: "M/F Dialogue",
-
     url: "https://gpjgvdpicjqrerqqzhyx.supabase.co/storage/v1/object/public/audio/demo_filthy_rich_santas_female_dialogue.mp3",
   },
   {
     title: "Character",
-
     url: "https://gpjgvdpicjqrerqqzhyx.supabase.co/storage/v1/object/public/audio/demo-rtibw-amos-intro.mp3",
   },
   {
     title: "Intense / Duet",
-
     url: "https://gpjgvdpicjqrerqqzhyx.supabase.co/storage/v1/object/public/audio/demo_neverfar_60s_april2025.mp3",
   },
 ];
@@ -101,22 +98,20 @@ export default function SchedulerPage() {
 
       let allRanges = [];
 
-      // Process Real Bookings
       if (requests.data) {
         const realRanges = requests.data.map((b) => ({
           start: parseLocalDate(b.start_date).getTime(),
           end: parseLocalDate(b.end_date).getTime(),
-          status: "booked", // UNIFORM STATUS
+          status: "booked",
         }));
         allRanges = [...allRanges, ...realRanges];
       }
 
-      // Process Blockouts
       if (bookouts.data) {
         const blockedRanges = bookouts.data.map((b) => ({
           start: parseLocalDate(b.start_date).getTime(),
           end: parseLocalDate(b.end_date).getTime(),
-          status: "booked", // UNIFORM STATUS
+          status: "booked",
         }));
         allRanges = [...allRanges, ...blockedRanges];
       }
@@ -128,7 +123,6 @@ export default function SchedulerPage() {
 
   // --- AUDIO LOGIC ---
   useEffect(() => {
-    // Stop any currently playing audio when effect runs
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -211,14 +205,13 @@ export default function SchedulerPage() {
     const found = bookedRanges.find((r) => time >= r.start && time <= r.end);
 
     if (!found) return "free";
-    // Returns 'booked' regardless of whether it's pending, blocked, or confirmed
     return "booked";
   };
 
   const handleDateClick = (day) => {
     const rawCount = parseInt(wordCount.replace(/,/g, ""));
     if (!rawCount || rawCount <= 0) {
-      showToast("Please enter word count first", "error");
+      showToast("Enter Word Count first", "error");
       return;
     }
 
@@ -229,7 +222,11 @@ export default function SchedulerPage() {
     );
     start.setHours(0, 0, 0, 0);
 
-    if (start < new Date().setHours(0, 0, 0, 0)) return;
+    // Normalize today for comparison
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (start < today) return;
 
     let isBlocked = false;
     for (let i = 0; i < daysNeeded; i++) {
@@ -314,6 +311,7 @@ export default function SchedulerPage() {
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -335,11 +333,12 @@ export default function SchedulerPage() {
         ))}
         {days.map((day) => {
           const date = new Date(year, month, day);
+          date.setHours(0, 0, 0, 0);
+
           const status = getDateStatus(date);
-          const isPast = date < today;
+          const isPast = date.getTime() < today.getTime();
           const discount = getDiscountForDate(date);
 
-          // Mobile: h-12, Desktop: h-20
           let base =
             "relative h-12 md:h-20 rounded-lg md:rounded-xl border flex flex-col items-center justify-center transition-all duration-200 group overflow-hidden";
           let look =
@@ -355,7 +354,6 @@ export default function SchedulerPage() {
               "bg-slate-50/50 border-white/10 opacity-40 cursor-not-allowed";
             content = <span className="text-slate-300 text-xs">{day}</span>;
           } else if (status === "booked") {
-            // UNIFIED "BOOKED" LOOK
             look = "bg-red-50/80 border-red-100 cursor-not-allowed";
             content = (
               <>
@@ -379,7 +377,9 @@ export default function SchedulerPage() {
               {content}
               {!isPast && status === "free" && discount && (
                 <div
-                  className={`absolute top-1 right-1 md:top-2 md:right-2 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${discount.color} z-10`}
+                  // 🚨 1. FIX: Changed 'top-1 right-1' to 'top-2 right-2'
+                  // This prevents the rounded corners from clipping the dots on mobile
+                  className={`absolute top-2 right-2 md:top-2 md:right-2 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${discount.color} z-10`}
                 />
               )}
             </button>
@@ -426,8 +426,7 @@ export default function SchedulerPage() {
           </span>
         </h1>
         <p className="text-slate-500 text-base md:text-lg font-medium max-w-lg mx-auto">
-          Please enter word count to calculate timeline, then select a start
-          date.
+          Enter word count to calculate timeline, then select a start date.
         </p>
       </div>
 
@@ -594,7 +593,8 @@ export default function SchedulerPage() {
             {/* Calendar takes remaining height */}
             <div className="flex-grow">{renderCalendar()}</div>
 
-            <div className="mt-8 flex flex-wrap justify-center gap-2 md:gap-3 border-t border-slate-200/30 pt-8">
+            {/* 🚨 2. FIX: 'grid grid-cols-2 md:flex' for 2x2 key on mobile */}
+            <div className="mt-8 grid grid-cols-2 md:flex md:flex-wrap md:justify-center gap-2 md:gap-3 border-t border-slate-200/30 pt-8">
               {[
                 { label: "5%", color: "bg-teal-500" },
                 { label: "6%", color: "bg-blue-500" },
@@ -603,7 +603,7 @@ export default function SchedulerPage() {
               ].map((item, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center gap-2 bg-white/40 px-3 py-1 md:px-4 md:py-1.5 rounded-full border border-white/40"
+                  className="flex items-center justify-center md:justify-start gap-2 bg-white/40 px-3 py-1 md:px-4 md:py-1.5 rounded-full border border-white/40"
                 >
                   <div
                     className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${item.color}`}
