@@ -509,12 +509,7 @@ export default function MasterEditorPage() {
                   >
                     <FilePlus size={14} /> Reset
                   </button>
-                  <button
-                    onClick={generateAndShowSql}
-                    className={themeStyle.btnGhost}
-                  >
-                    <Database size={14} /> SQL
-                  </button>
+                  {/* SQL BUTTON REMOVED FROM HERE */}
                 </div>
                 <div
                   className={`w-px h-8 mx-2 ${isDark ? "bg-white/10" : "bg-slate-300"}`}
@@ -693,6 +688,8 @@ export default function MasterEditorPage() {
                 onChange={handleLexicalChange}
                 theme={theme}
                 bgOpacity={bgOpacity}
+                onSqlExport={generateAndShowSql}
+                title={title} // PASSED DOWN HERE
               />
               <div
                 className={`flex justify-between text-[10px] font-mono opacity-50 uppercase tracking-widest ${isDark ? "text-white" : "text-slate-500"}`}

@@ -28,7 +28,7 @@ import {
 } from "@lexical/list";
 import { CodeNode } from "@lexical/code";
 import { LinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
-import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html"; // Added $generateNodesFromDOM
+import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html";
 import {
   $createParagraphNode,
   $getSelection,
@@ -60,7 +60,288 @@ import {
   AlignRight,
   Link as LinkIcon,
   X,
+  Download,
+  FileText,
+  File,
+  ChevronDown,
+  Loader2,
+  Database,
 } from "lucide-react";
+
+// --- EXPORT DEPENDENCIES ---
+import {
+  pdf,
+  Document,
+  Page,
+  Text as PdfText,
+  StyleSheet,
+} from "@react-pdf/renderer";
+import {
+  Document as DocxDocument,
+  Packer,
+  Paragraph,
+  TextRun,
+  HeadingLevel,
+} from "docx";
+import { saveAs } from "file-saver";
+
+// -----------------------------------------------------------------------------
+// 0. EXPORT LOGIC & STYLES
+// -----------------------------------------------------------------------------
+
+const extractTextSegments = (html) => {
+  if (typeof window === "undefined") return [];
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  // Added 'li' to capture list items
+  const nodes = doc.body.querySelectorAll(
+    "p, h1, h2, h3, h4, li, blockquote, pre"
+  );
+  return Array.from(nodes)
+    .map((node) => ({
+      type: node.tagName.toLowerCase(),
+      text: node.textContent || "",
+    }))
+    .filter((item) => item.text.trim() !== "");
+};
+
+// PDF Styles (Basic fallback)
+const pdfStyles = StyleSheet.create({
+  page: { padding: 40, fontFamily: "Helvetica" },
+  title: {
+    fontSize: 24,
+    marginBottom: 10,
+    fontWeight: "bold",
+    color: "#14b8a6",
+  },
+  h1: { fontSize: 18, marginTop: 15, marginBottom: 5, fontWeight: "bold" },
+  h2: {
+    fontSize: 16,
+    marginTop: 12,
+    marginBottom: 5,
+    fontWeight: "bold",
+    color: "#555",
+  },
+  body: { fontSize: 11, lineHeight: 1.6, marginBottom: 8, color: "#333" },
+  quote: {
+    fontSize: 11,
+    fontStyle: "italic",
+    color: "#666",
+    borderLeft: "2px solid #ccc",
+    paddingLeft: 10,
+    marginVertical: 10,
+  },
+  footer: {
+    position: "absolute",
+    bottom: 30,
+    left: 40,
+    right: 40,
+    fontSize: 8,
+    textAlign: "center",
+    color: "#aaa",
+  },
+});
+
+const PdfTemplate = ({ segments, title }) => (
+  <Document>
+    <Page size="A4" style={pdfStyles.page}>
+      <PdfText style={pdfStyles.title}>{title || "Untitled Draft"}</PdfText>
+      {segments.map((seg, i) => {
+        if (seg.type.startsWith("h"))
+          return (
+            <PdfText key={i} style={pdfStyles.h1}>
+              {seg.text}
+            </PdfText>
+          );
+        if (seg.type === "blockquote")
+          return (
+            <PdfText key={i} style={pdfStyles.quote}>
+              {seg.text}
+            </PdfText>
+          );
+        return (
+          <PdfText key={i} style={pdfStyles.body}>
+            {seg.text}
+          </PdfText>
+        );
+      })}
+      <PdfText style={pdfStyles.footer}>Generated with VibeWriter</PdfText>
+    </Page>
+  </Document>
+);
+
+const VibeExportMenu = ({ onSqlExport, title }) => {
+  const [editor] = useLexicalComposerContext();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const getCleanContent = () => {
+    let htmlString = "";
+    editor.update(() => {
+      htmlString = $generateHtmlFromNodes(editor, null);
+    });
+    return extractTextSegments(htmlString);
+  };
+
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      const segments = getCleanContent();
+      const blob = await pdf(
+        <PdfTemplate segments={segments} title={title} />
+      ).toBlob();
+      saveAs(blob, `${title || "vibe-draft"}.pdf`);
+    } catch (e) {
+      console.error("PDF Error", e);
+    }
+    setIsExporting(false);
+    setIsOpen(false);
+  };
+
+  // --- FIXED DOCX MAPPING LOGIC ---
+  const handleExportDOCX = async () => {
+    setIsExporting(true);
+    try {
+      const segments = getCleanContent();
+      const docChildren = segments.map((seg) => {
+        switch (seg.type) {
+          case "h1":
+            return new Paragraph({
+              text: seg.text,
+              heading: HeadingLevel.HEADING_1,
+            });
+          case "h2":
+            return new Paragraph({
+              text: seg.text,
+              heading: HeadingLevel.HEADING_2,
+            });
+          case "h3":
+            return new Paragraph({
+              text: seg.text,
+              heading: HeadingLevel.HEADING_3,
+            });
+          case "h4":
+            return new Paragraph({
+              text: seg.text,
+              heading: HeadingLevel.HEADING_4,
+            });
+          case "li":
+            return new Paragraph({
+              text: seg.text,
+              bullet: { level: 0 }, // List Item
+            });
+          case "blockquote":
+            return new Paragraph({
+              children: [new TextRun({ text: seg.text, italics: true })],
+              indent: { left: 720 }, // Indent for quotes
+            });
+          default:
+            // Normal Text
+            return new Paragraph({
+              children: [new TextRun({ text: seg.text, size: 24 })], // 12pt = 24 half-points
+              spacing: { after: 200 },
+            });
+        }
+      });
+
+      const doc = new DocxDocument({
+        sections: [
+          {
+            properties: {},
+            children: [
+              // THIS IS THE MAIN TITLE
+              new Paragraph({
+                text: title || "Untitled Transmission",
+                heading: HeadingLevel.TITLE,
+              }),
+              ...docChildren,
+            ],
+          },
+        ],
+      });
+
+      const blob = await Packer.toBlob(doc);
+      saveAs(blob, `${title || "vibe-draft"}.docx`);
+    } catch (e) {
+      console.error("DOCX Error", e);
+    }
+    setIsExporting(false);
+    setIsOpen(false);
+  };
+
+  const handleSqlClick = () => {
+    setIsOpen(false);
+    if (onSqlExport) onSqlExport();
+  };
+
+  return (
+    <div className="relative inline-block ml-auto pl-2 border-l border-white/10">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        disabled={isExporting}
+        className="flex items-center gap-2 px-3 py-1.5 rounded bg-teal-500/10 border border-teal-500/30 text-teal-400 hover:bg-teal-500/20 hover:text-teal-300 transition-all text-xs font-bold uppercase tracking-wider"
+      >
+        {isExporting ? (
+          <Loader2 size={14} className="animate-spin" />
+        ) : (
+          <Download size={14} />
+        )}
+        Export
+        <ChevronDown
+          size={12}
+          className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full right-0 mt-2 w-48 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl z-[60] overflow-hidden animate-in fade-in zoom-in-95">
+          <div className="px-3 py-2 text-[10px] font-bold uppercase text-slate-500 tracking-widest border-b border-white/5">
+            Download As...
+          </div>
+
+          <button
+            onClick={handleExportPDF}
+            className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center gap-3 transition-colors border-b border-white/5 group"
+          >
+            <div className="p-2 bg-red-500/10 text-red-400 rounded-lg group-hover:bg-red-500/20 transition-colors">
+              <File size={16} />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-200">PDF</div>
+              <div className="text-[10px] text-slate-500">Read-only format</div>
+            </div>
+          </button>
+
+          <button
+            onClick={handleExportDOCX}
+            className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center gap-3 transition-colors border-b border-white/5 group"
+          >
+            <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg group-hover:bg-blue-500/20 transition-colors">
+              <FileText size={16} />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-200">Word Doc</div>
+              <div className="text-[10px] text-slate-500">Editable format</div>
+            </div>
+          </button>
+
+          <button
+            onClick={handleSqlClick}
+            className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center gap-3 transition-colors group"
+          >
+            <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg group-hover:bg-emerald-500/20 transition-colors">
+              <Database size={16} />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-200">SQL Insert</div>
+              <div className="text-[10px] text-slate-500">Database Query</div>
+            </div>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // -----------------------------------------------------------------------------
 // 1. THEME CONFIGURATION
@@ -156,7 +437,7 @@ const VibeModal = ({ isOpen, onClose, onConfirm }) => {
 // -----------------------------------------------------------------------------
 // 3. TOOLBAR COMPONENT
 // -----------------------------------------------------------------------------
-function VibeToolbar() {
+function VibeToolbar({ onSqlExport, title }) {
   const [editor] = useLexicalComposerContext();
   const [activeBlock, setActiveBlock] = useState("paragraph");
 
@@ -440,6 +721,9 @@ function VibeToolbar() {
         >
           <AlignRight size={18} />
         </button>
+
+        {/* --- ADDED VIBE EXPORT MENU HERE --- */}
+        <VibeExportMenu onSqlExport={onSqlExport} title={title} />
       </div>
       <VibeModal
         isOpen={modalOpen}
@@ -482,7 +766,14 @@ const LoadHtmlPlugin = ({ initialContent }) => {
 // -----------------------------------------------------------------------------
 const VibeEditor = forwardRef(
   (
-    { onChange, initialContent = null, theme = "teal", bgOpacity = 80 },
+    {
+      onChange,
+      initialContent = null,
+      theme = "teal",
+      bgOpacity = 80,
+      onSqlExport,
+      title, // ADDED PROP
+    },
     ref
   ) => {
     const initialConfig = {
@@ -570,7 +861,7 @@ const VibeEditor = forwardRef(
         }}
       >
         <LexicalComposer initialConfig={initialConfig}>
-          <VibeToolbar />
+          <VibeToolbar onSqlExport={onSqlExport} title={title} />
 
           <LoadHtmlPlugin initialContent={initialContent} />
 
