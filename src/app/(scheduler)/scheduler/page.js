@@ -21,6 +21,7 @@ import {
   Music,
   Plus,
   Mail,
+  Clapperboard,
 } from "lucide-react";
 
 // --- 1. SUPABASE CONNECTION ---
@@ -81,7 +82,7 @@ export default function SchedulerPage() {
     notes: "",
   });
 
-  // --- 3. FETCH DATABASE SCHEDULE ---
+  // --- 3. FETCH DATABASE SCHEDULE (UPDATED) ---
   useEffect(() => {
     const fetchSchedule = async () => {
       const [requests, bookouts] = await Promise.all([
@@ -90,7 +91,8 @@ export default function SchedulerPage() {
           .select("start_date, end_date, status")
           .neq("status", "archived")
           .neq("status", "deleted")
-          .neq("status", "postponed"),
+          .neq("status", "postponed")
+          .neq("status", "cinesonic"), // <--- CRITICAL FIX: EXCLUDE CINESONIC FROM BLOCKED DATES
 
         supabase.from("7_bookouts").select("start_date, end_date"),
       ]);
@@ -248,15 +250,10 @@ export default function SchedulerPage() {
     setStep(2);
   };
 
+  // --- SUBMISSION LOGIC ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
-    if (["Dual", "Duet", "Multicast"].includes(formData.style)) {
-      setLoading(false);
-      showToast("Please email me for multi-voice projects.", "error");
-      return;
-    }
 
     try {
       const endDate = new Date(selectedDate);
@@ -269,6 +266,11 @@ export default function SchedulerPage() {
         const day = String(d.getDate()).padStart(2, "0");
         return `${year}-${month}-${day}`;
       };
+
+      const isCineSonic = ["Dual", "Duet", "Multicast"].includes(
+        formData.style
+      );
+      const statusToSet = isCineSonic ? "cinesonic" : "pending";
 
       const payload = {
         client_name: formData.clientName,
@@ -284,7 +286,7 @@ export default function SchedulerPage() {
         is_returning: formData.isReturning,
         discount_applied: calculateDiscount() || "None",
         client_type: formData.clientType,
-        status: "pending",
+        status: statusToSet,
       };
 
       const { error } = await supabase
@@ -292,7 +294,12 @@ export default function SchedulerPage() {
         .insert([payload]);
 
       if (error) throw error;
-      setStep(3);
+
+      if (isCineSonic) {
+        setStep(4);
+      } else {
+        setStep(3);
+      }
     } catch (error) {
       console.error("Booking Error:", JSON.stringify(error, null, 2));
       showToast("System Error. Please try again.", "error");
@@ -362,11 +369,9 @@ export default function SchedulerPage() {
             look = "bg-red-50/80 border-red-100 cursor-not-allowed";
             content = (
               <>
-                {/* Number pushed to top-left and faded */}
                 <span className="text-red-300/50 text-[10px] absolute top-1 left-1.5">
                   {day}
                 </span>
-                {/* Booked Text - CENTERED */}
                 <span className="text-red-400/90 text-[6px] md:text-[10px] font-black uppercase -rotate-12 tracking-widest absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
                   Booked
                 </span>
@@ -402,7 +407,6 @@ export default function SchedulerPage() {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center pt-12 md:pt-8 pb-16 px-4 bg-gradient-to-br from-[#FDFBF7] via-[#E8F3F1] to-[#E0E7FF] selection:bg-teal-200 selection:text-teal-900 overflow-x-hidden">
-      {/* Toast */}
       {toast && (
         <div
           className={`fixed bottom-10 z-[100] px-6 py-3 md:px-8 md:py-4 rounded-2xl shadow-xl flex items-center gap-4 animate-fade-in-up backdrop-blur-xl border border-white/20 ${
@@ -443,9 +447,7 @@ export default function SchedulerPage() {
 
       {step === 1 && (
         <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-stretch animate-fade-in relative z-10">
-          {/* LEFT SIDEBAR */}
           <div className="lg:col-span-4 flex flex-col gap-4 md:gap-6 h-full order-2 lg:order-1">
-            {/* CALCULATOR */}
             <div className="bg-white/60 backdrop-blur-xl border border-white/60 p-6 md:p-8 rounded-3xl shadow-sm hover:shadow-md transition-all">
               <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
                 <div className="w-1 h-3 bg-teal-400 rounded-full" /> Word Count
@@ -470,7 +472,6 @@ export default function SchedulerPage() {
               </div>
             </div>
 
-            {/* DEMO PLAYER */}
             <div className="bg-white/60 backdrop-blur-xl border border-white/60 p-6 md:p-8 rounded-3xl shadow-sm hover:shadow-md transition-all">
               <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
                 <div className="w-1 h-3 bg-indigo-400 rounded-full" /> Listen to
@@ -512,7 +513,6 @@ export default function SchedulerPage() {
               </div>
             </div>
 
-            {/* STUDIO SPECS */}
             <div className="bg-slate-900 text-white p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200 flex flex-col justify-center flex-grow">
               <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-6 flex items-center gap-2">
                 <div className="w-1 h-3 bg-teal-400 rounded-full" /> Studio
@@ -576,7 +576,6 @@ export default function SchedulerPage() {
             </div>
           </div>
 
-          {/* RIGHT SIDE (CALENDAR) */}
           <div className="lg:col-span-8 bg-white/50 backdrop-blur-2xl border border-white/50 p-6 md:p-10 rounded-3xl md:rounded-[2.5rem] shadow-sm h-full flex flex-col order-1 lg:order-2">
             <div className="flex items-center justify-between mb-6 px-1 md:px-2">
               <button
@@ -601,7 +600,6 @@ export default function SchedulerPage() {
               </button>
             </div>
 
-            {/* Calendar takes remaining height */}
             <div className="flex-grow">{renderCalendar()}</div>
 
             <div className="mt-8 grid grid-cols-2 md:flex md:flex-wrap md:justify-center gap-2 md:gap-3 border-t border-slate-200/30 pt-8">
@@ -752,65 +750,46 @@ export default function SchedulerPage() {
               </select>
             </div>
 
-            {/* Multi-Voice Warning */}
-            {["Dual", "Duet", "Multicast"].includes(formData.style) ? (
-              <div className="p-8 bg-indigo-50 rounded-3xl border border-indigo-100 text-center animate-fade-in">
-                <p className="text-indigo-900 font-bold text-lg mb-4">
-                  Multi-voice requires a custom setup.
-                </p>
-                <p className="text-slate-600 text-sm mb-6">
-                  Please email me directly to discuss casting and production
-                  options.
-                </p>
-                <div className="bg-white p-4 rounded-xl border border-indigo-100 shadow-sm flex items-center justify-center gap-3">
-                  <Mail size={16} className="text-indigo-600" />
-                  <span className="font-black text-slate-800 select-all">
-                    dm@danielnotdaylewis.com
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-6 md:space-y-8">
-                <div className="group">
-                  <label className="input-label">Genre</label>
-                  <select
-                    required
-                    name="genre"
-                    onChange={handleInputChange}
-                    className="input-field bg-transparent"
-                  >
-                    <option value="">Select...</option>
-                    <option value="Romance">Romance</option>
-                    <option value="Sci-Fi">Sci-Fi</option>
-                    <option value="Fantasy">Fantasy</option>
-                    <option value="Thriller">Thriller</option>
-                    <option value="Non-Fic">Non-Fic</option>
-                  </select>
-                </div>
-                <div className="group">
-                  <label className="input-label">Notes</label>
-                  <textarea
-                    name="notes"
-                    onChange={handleInputChange}
-                    className="input-field h-32 resize-none leading-relaxed"
-                    placeholder="Vibe check..."
-                  />
-                </div>
-
-                <button
-                  disabled={loading}
-                  className="w-full bg-slate-900 text-white font-black uppercase tracking-widest py-6 rounded-2xl hover:bg-teal-600 transition-all shadow-xl flex justify-center items-center gap-3 disabled:opacity-50 text-sm"
+            <div className="space-y-6 md:space-y-8">
+              <div className="group">
+                <label className="input-label">Genre</label>
+                <select
+                  required
+                  name="genre"
+                  onChange={handleInputChange}
+                  className="input-field bg-transparent"
                 >
-                  {loading ? (
-                    <Loader2 className="animate-spin" size={20} />
-                  ) : (
-                    <>
-                      <ArrowRight size={20} /> Submit Booking Request
-                    </>
-                  )}
-                </button>
+                  <option value="">Select...</option>
+                  <option value="Romance">Romance</option>
+                  <option value="Sci-Fi">Sci-Fi</option>
+                  <option value="Fantasy">Fantasy</option>
+                  <option value="Thriller">Thriller</option>
+                  <option value="Non-Fic">Non-Fic</option>
+                </select>
               </div>
-            )}
+              <div className="group">
+                <label className="input-label">Notes</label>
+                <textarea
+                  name="notes"
+                  onChange={handleInputChange}
+                  className="input-field h-32 resize-none leading-relaxed"
+                  placeholder="Vibe check..."
+                />
+              </div>
+
+              <button
+                disabled={loading}
+                className="w-full bg-slate-900 text-white font-black uppercase tracking-widest py-6 rounded-2xl hover:bg-teal-600 transition-all shadow-xl flex justify-center items-center gap-3 disabled:opacity-50 text-sm"
+              >
+                {loading ? (
+                  <Loader2 className="animate-spin" size={20} />
+                ) : (
+                  <>
+                    <ArrowRight size={20} /> Submit Booking Request
+                  </>
+                )}
+              </button>
+            </div>
           </form>
         </div>
       )}
@@ -830,6 +809,34 @@ export default function SchedulerPage() {
           <Link
             href="/"
             className="inline-block px-10 py-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-full hover:bg-teal-600 text-xs shadow-xl"
+          >
+            Return Home
+          </Link>
+        </div>
+      )}
+
+      {step === 4 && (
+        <div className="w-full max-w-lg bg-indigo-50/90 backdrop-blur-2xl border border-indigo-100 p-12 rounded-[3rem] text-center animate-fade-in-up z-20">
+          <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-8 text-indigo-600">
+            <Clapperboard size={40} />
+          </div>
+          <h2 className="text-3xl font-black uppercase text-indigo-900 mb-6 tracking-tight">
+            CineSonic Request Received
+          </h2>
+          <p className="text-slate-600 text-base mb-8 font-medium leading-relaxed">
+            Multi-voice projects require a tailored approach. I'll reach out via
+            email shortly to discuss casting, production logistics, and
+            timelines.
+          </p>
+          <div className="bg-white p-4 rounded-2xl border border-indigo-100 shadow-sm mb-10 flex items-center justify-center gap-3">
+            <Mail size={16} className="text-indigo-500" />
+            <span className="font-bold text-slate-700 text-sm">
+              Keep an eye on your inbox.
+            </span>
+          </div>
+          <Link
+            href="/"
+            className="inline-block px-10 py-4 bg-indigo-600 text-white font-black uppercase tracking-widest rounded-full hover:bg-indigo-700 text-xs shadow-xl"
           >
             Return Home
           </Link>

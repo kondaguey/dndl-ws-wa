@@ -369,7 +369,14 @@ export default function OnboardingManager() {
         .select(
           `*, request:2_booking_requests!inner (id, book_title, client_name, client_type, cover_image_url, status, start_date, end_date, days_needed, ref_number, email, email_thread_link, word_count, genre, narration_style, notes, is_returning)`
         )
-        .in("request.status", ["approved", "f15_production", "f15_holding"])
+        // --- FIX: UPDATED STATUS FILTER TO INCLUDE NEW TYPES ---
+        .in("request.status", [
+          "onboarding",
+          "first_15",
+          "f15_holding",
+          "approved", // legacy support
+          "f15_production", // legacy support
+        ])
         .order("id", { ascending: false });
       if (error) throw error;
       setItems(data || []);
@@ -519,19 +526,23 @@ export default function OnboardingManager() {
     setItems((prev) =>
       prev.map((i) =>
         i.id === item.id
-          ? { ...i, request: { ...i.request, status: "f15_production" } }
+          ? { ...i, request: { ...i.request, status: "first_15" } }
           : i
       )
     );
     await supabase
       .from("2_booking_requests")
-      .update({ status: "f15_production" })
+      .update({ status: "first_15" })
       .eq("id", item.request.id);
     showToast("Moved to First 15 Tab!");
   };
 
-  const graduateToHolding = async (item, batchUpdates) => {
-    await performBatchUpdate(item, batchUpdates);
+  const graduateToHolding = async (item, batchUpdates = {}) => {
+    // Optional batch update if called from steps
+    if (Object.keys(batchUpdates).length > 0) {
+      await performBatchUpdate(item, batchUpdates);
+    }
+
     setItems((prev) =>
       prev.map((i) =>
         i.id === item.id
@@ -552,7 +563,7 @@ export default function OnboardingManager() {
     date,
     extraDates
   ) => {
-    await performBatchUpdate(item, batchUpdates);
+    if (batchUpdates) await performBatchUpdate(item, batchUpdates);
     setItems((prev) => prev.filter((i) => i.id !== item.id));
 
     // Check if Production Record Exists First (Deduplication)
@@ -564,9 +575,11 @@ export default function OnboardingManager() {
 
     const prodPayload = {
       request_id: item.request.id,
-      status: "recording",
-      recording_start_date: extraDates?.recordingStart || date,
-      recording_due_date: extraDates?.recordingDue || date,
+      status: "recording", // Or "Text Prep" depending on your preference
+      recording_start_date:
+        extraDates?.recordingStart || date || item.request.start_date,
+      recording_due_date:
+        extraDates?.recordingDue || date || item.request.end_date,
     };
 
     if (existing) {
@@ -662,26 +675,60 @@ export default function OnboardingManager() {
     }
   };
   const executeStatusChange = async (item, newStatus, refundData = null) => {
+    // 1. Optimistic UI Removal
     setItems((prev) => prev.filter((i) => i.id !== item.id));
-    await supabase
-      .from("2_booking_requests")
-      .update({ status: newStatus })
-      .eq("id", item.request.id);
-    if (newStatus === "rejected" && refundData) {
-      await supabase
-        .from(TABLE_NAME)
-        .update({
-          refund_percentage: refundData.percentage,
-          refund_date: new Date().toISOString().split("T")[0],
-          current_status: "Rejected",
-        })
-        .eq("id", item.id);
+
+    try {
+      // CASE 1: POSTPONE (Just update status, keep in DB)
+      if (newStatus === "postponed") {
+        const { error } = await supabase
+          .from("2_booking_requests")
+          .update({ status: "postponed" })
+          .eq("id", item.request.id);
+
+        if (error) throw error;
+        showToast("Project Postponed");
+      }
+      // CASE 2: BOOT / REJECT (Move to 6_archive -> Delete from DB)
+      else if (newStatus === "rejected") {
+        // A. Create Archive Payload (Include refund info if exists)
+        const archivePayload = {
+          ...item, // Includes the tracker data AND the nested .request object
+          refund_details: refundData || null,
+          booted_from: TABLE_NAME,
+        };
+
+        // B. Insert into 6_archive
+        const { error: archiveError } = await supabase
+          .from("6_archive")
+          .insert([
+            {
+              original_data: archivePayload,
+              archived_at: new Date(),
+              reason: refundData
+                ? `Booted with ${refundData.percentage}% refund`
+                : "Booted from Onboarding Pipeline",
+            },
+          ]);
+        if (archiveError) throw archiveError;
+
+        // C. Delete from Source (Cascades to tracker table automatically)
+        const { error: deleteError } = await supabase
+          .from("2_booking_requests")
+          .delete()
+          .eq("id", item.request.id);
+
+        if (deleteError) throw deleteError;
+
+        showToast("Project Booted to Archives");
+      }
+    } catch (error) {
+      console.error("Status Change Error:", error);
+      showToast("Action failed", "error");
+      // Optional: Re-fetch if failed to ensure UI stays in sync
+      fetchPipeline();
     }
-    showToast(
-      newStatus === "postponed"
-        ? "Project Postponed"
-        : "Project Booted & Refund Logged"
-    );
+
     setRefundModal({ isOpen: false, item: null });
   };
   const getNudgeStyles = (count) => {
@@ -713,9 +760,15 @@ export default function OnboardingManager() {
     };
   };
 
-  const onboardingItems = items.filter((i) => i.request.status === "approved");
-  const f15Items = items.filter((i) => i.request.status === "f15_production");
+  // --- FIX: UPDATED TAB FILTERS TO MATCH NEW STATUSES ---
+  const onboardingItems = items.filter((i) =>
+    ["onboarding", "approved"].includes(i.request.status)
+  );
+  const f15Items = items.filter((i) =>
+    ["first_15", "f15_production"].includes(i.request.status)
+  );
   const holdingItems = items.filter((i) => i.request.status === "f15_holding");
+
   let activeItems = [];
   if (subTab === "checklist") activeItems = onboardingItems;
   if (subTab === "f15") activeItems = f15Items;
@@ -758,6 +811,7 @@ export default function OnboardingManager() {
 
   return (
     <div className="relative w-full space-y-8 pb-24">
+      {/* ... (Modals remain unchanged) ... */}
       <DateConfirmModal
         isOpen={dateModal.isOpen}
         title={
@@ -935,6 +989,7 @@ export default function OnboardingManager() {
               >
                 {/* HEADER - MOBILE FLEX ROW */}
                 <div className="flex flex-col lg:flex-row gap-6 md:gap-8 mb-6 pb-6 border-b border-slate-100">
+                  {/* ... (Image/Title section unchanged) ... */}
                   {/* Image + Title Section (Flex Row on Mobile for Space Efficiency) */}
                   <div className="flex flex-row lg:flex-col gap-4 lg:w-40 lg:shrink-0">
                     <div className="w-24 h-36 lg:w-40 lg:h-60 bg-slate-100 rounded-xl shrink-0 shadow-md relative overflow-hidden">
@@ -1061,7 +1116,7 @@ export default function OnboardingManager() {
                             size={14}
                             className="text-amber-400 shrink-0 mt-0.5"
                           />
-                          <p className="text-[10px] font-medium text-amber-900 leading-relaxed line-clamp-2">
+                          <p className="text-xs font-medium text-amber-900 leading-relaxed line-clamp-2">
                             {item.request.notes}
                           </p>
                         </div>
@@ -1083,26 +1138,26 @@ export default function OnboardingManager() {
                             </button>
                           </div>
                         )}
+                        {/* --- NEW BUTTONS FOR F15 TAB --- */}
                         {subTab === "f15" && (
-                          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100 flex-grow justify-between">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => toggleAdvancedBooking(item)}
-                                className="text-blue-600 hover:text-blue-800"
-                              >
-                                {isAdvanced ? (
-                                  <ToggleRight size={24} />
-                                ) : (
-                                  <ToggleLeft size={24} />
-                                )}
-                              </button>
-                              <span className="text-[10px] md:text-xs font-bold text-blue-800 uppercase tracking-wider">
-                                Advanced Booking?
-                              </span>
-                            </div>
-                            <span className="text-[9px] text-blue-400 font-medium hidden md:block">
-                              Moves to Holding Tank if checked
-                            </span>
+                          <div className="flex flex-col md:flex-row gap-2 w-full">
+                            {/* HOLD BUTTON */}
+                            <button
+                              onClick={() => graduateToHolding(item)}
+                              className="flex-1 px-4 py-3 bg-blue-50 text-blue-700 border border-blue-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 flex items-center justify-center gap-2"
+                            >
+                              <CalendarClock size={16} /> Move to Hold
+                            </button>
+
+                            {/* START PRODUCTION BUTTON */}
+                            <button
+                              onClick={() =>
+                                graduateToFullProduction(item, null, null, null)
+                              }
+                              className="flex-1 px-4 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 flex items-center justify-center gap-2 shadow-md shadow-emerald-200"
+                            >
+                              <Rocket size={16} /> Start Production
+                            </button>
                           </div>
                         )}
                       </div>

@@ -1,4 +1,3 @@
-// src/components/production-manager/InvoicesAndPayments.js
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -6,13 +5,10 @@ import nextDynamic from "next/dynamic";
 import { createClient } from "@/src/utils/supabase/client";
 import {
   FileText,
-  ExternalLink,
   Save,
   Loader2,
   Calculator,
   TrendingUp,
-  Layers,
-  Calendar,
   CheckCircle,
   RotateCcw,
   Percent,
@@ -27,12 +23,22 @@ import {
   Zap,
   Mail,
   Briefcase,
+  Search,
+  Trophy,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import InvoicePDF from "./InvoicePDF";
 
 const PDFDownloadLink = nextDynamic(
   () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
-  { ssr: false, loading: () => <span className="opacity-50">...</span> }
+  {
+    ssr: false,
+    loading: () => (
+      <span className="text-xs font-bold text-slate-400">Loading PDF...</span>
+    ),
+  }
 );
 
 const supabase = createClient(
@@ -40,6 +46,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+// --- UTILS ---
 const parseLocalDate = (dateStr) => {
   if (!dateStr) return null;
   const [year, month, day] = dateStr.split("-").map(Number);
@@ -51,6 +58,80 @@ const formatCurrency = (amount) =>
     amount || 0
   );
 
+// --- COMPONENTS ---
+const Toast = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const t = setTimeout(onClose, 3000);
+    return () => clearTimeout(t);
+  }, [onClose]);
+  return (
+    <div
+      className={`fixed bottom-6 right-6 z-[250] flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl animate-in slide-in-from-bottom-5 border ${type === "error" ? "bg-red-50 border-red-100 text-red-600" : "bg-slate-900 border-slate-800 text-white"}`}
+    >
+      {type === "error" ? (
+        <XCircle size={20} />
+      ) : (
+        <CheckCircle2 size={20} className="text-emerald-400" />
+      )}
+      <span className="font-bold text-sm">{message}</span>
+    </div>
+  );
+};
+
+const ActionModal = ({ isOpen, type, title, message, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+
+  const styles = {
+    complete: {
+      icon: Trophy,
+      color: "text-emerald-500",
+      btn: "bg-emerald-600 hover:bg-emerald-700",
+    },
+    default: {
+      icon: AlertTriangle,
+      color: "text-amber-500",
+      btn: "bg-slate-900 hover:bg-slate-800",
+    },
+  };
+  const style = styles[type] || styles.default;
+  const Icon = style.icon;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden scale-100 transition-all">
+        <div className="p-8 text-center">
+          <div
+            className={`mx-auto w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-6 ${style.color}`}
+          >
+            <Icon size={32} />
+          </div>
+          <h3 className="text-xl font-black text-slate-900 uppercase mb-2">
+            {title}
+          </h3>
+          <p className="text-sm text-slate-500 font-medium leading-relaxed">
+            {message}
+          </p>
+        </div>
+        <div className="flex border-t border-slate-100">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-5 text-xs font-bold uppercase text-slate-400 hover:bg-slate-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 py-5 text-xs font-bold uppercase text-white transition-colors ${style.btn}`}
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- MAIN COMPONENT ---
 export default function InvoicesAndPayments({ initialProject }) {
   const [projects, setProjects] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -62,6 +143,9 @@ export default function InvoicesAndPayments({ initialProject }) {
   const [isEditing, setIsEditing] = useState(false);
   const [mailFeedback, setMailFeedback] = useState(false);
   const [showPDF, setShowPDF] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [toast, setToast] = useState(null);
+  const [modal, setModal] = useState({ isOpen: false });
 
   const [formData, setFormData] = useState({
     pfh_count: 0,
@@ -77,31 +161,58 @@ export default function InvoicesAndPayments({ initialProject }) {
     ledger_tab: "open",
   });
 
+  const showToast = (msg, type = "success") => setToast({ message: msg, type });
+
+  // --- FETCHING SOURCE OF TRUTH ---
   const fetchData = async () => {
+    // Only fetch valid, active projects
     const { data: bData } = await supabase
       .from("2_booking_requests")
       .select("*")
+      .neq("status", "deleted")
+      .neq("status", "archived")
+      .neq("status", "completed") // Don't show completed items in active view
       .order("created_at", { ascending: false });
+
     const { data: iData } = await supabase.from("9_invoices").select("*");
+
     setProjects(bData || []);
     setInvoices(iData || []);
-    if (!selectedProject && bData?.length > 0) setSelectedProject(bData[0]);
   };
 
   useEffect(() => {
     fetchData();
   }, []);
 
+  // --- SYNC STATE ---
+  useEffect(() => {
+    if (projects.length > 0) {
+      if (
+        selectedProject &&
+        !projects.find((p) => p.id === selectedProject.id)
+      ) {
+        setSelectedProject(projects[0]);
+      } else if (!selectedProject) {
+        setSelectedProject(projects[0]);
+      }
+    } else {
+      setSelectedProject(null);
+    }
+  }, [projects]);
+
+  // --- LOAD INVOICE DATA ---
   useEffect(() => {
     const fetchInvoice = async () => {
       if (!selectedProject?.id) return;
       setLoading(true);
       setShowPDF(false);
+
       const { data } = await supabase
         .from("9_invoices")
         .select("*")
         .eq("project_id", selectedProject.id)
         .single();
+
       if (data) {
         setFormData({ ...data });
         setIsEditing(false);
@@ -159,28 +270,84 @@ export default function InvoicesAndPayments({ initialProject }) {
     return due ? Math.ceil((today - due) / (1000 * 60 * 60 * 24)) : 0;
   }, [formData.due_date, formData.ledger_tab]);
 
-  const handleSave = async () => {
+  const handleSave = async (silent = false) => {
     if (!selectedProject) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
+
     const payload = {
       ...formData,
       total_amount: calcs.total,
       project_id: selectedProject.id,
     };
+
     const inv = invoices.find((i) => i.project_id === selectedProject.id);
-    let result = inv?.id
-      ? await supabase
-          .from("9_invoices")
-          .update(payload)
-          .eq("id", inv.id)
-          .select()
-          .single()
-      : await supabase.from("9_invoices").insert([payload]).select().single();
+    let result;
+    if (inv?.id) {
+      result = await supabase
+        .from("9_invoices")
+        .update(payload)
+        .eq("id", inv.id)
+        .select()
+        .single();
+    } else {
+      result = await supabase
+        .from("9_invoices")
+        .insert([payload])
+        .select()
+        .single();
+    }
+
     if (!result.error) {
       fetchData();
       setIsEditing(false);
+      if (!silent) showToast("Invoice Saved");
     }
+    if (!silent) setLoading(false);
+    return result;
+  };
+
+  // --- COMPLETE PROJECT LOGIC (FIXED) ---
+  const triggerComplete = () => {
+    setModal({
+      isOpen: true,
+      type: "complete",
+      title: "Complete Project",
+      message: `Mark "${selectedProject.book_title}" as 100% complete? This will move it to the Completed Archive.`,
+      action: executeComplete,
+    });
+  };
+
+  const executeComplete = async () => {
+    setLoading(true);
+
+    // 1. Save final invoice data to ensure consistency
+    await handleSave(true);
+
+    // 2. UPDATE Booking Request to 'completed' (This makes it show up in Archives.js > Completed Tab)
+    const { error: updateError } = await supabase
+      .from("2_booking_requests")
+      .update({ status: "completed", end_date: new Date().toISOString() }) // Also set end_date
+      .eq("id", selectedProject.id);
+
+    if (updateError) {
+      showToast("Completion Failed", "error");
+      setLoading(false);
+      setModal({ isOpen: false });
+      return;
+    }
+
+    // 3. DELETE from Production Board (Clean up 4_production)
+    // We assume active projects have a row here. We kill it so it leaves the board.
+    await supabase
+      .from("4_production")
+      .delete()
+      .eq("request_id", selectedProject.id);
+
+    // 4. Cleanup & UI Update
+    setProjects((prev) => prev.filter((p) => p.id !== selectedProject.id));
+    setModal({ isOpen: false });
     setLoading(false);
+    showToast("Project Completed!");
   };
 
   const copyEmailDraft = () => {
@@ -196,25 +363,25 @@ export default function InvoicesAndPayments({ initialProject }) {
     switch (formData.reminders_sent) {
       case 1:
         return {
-          label: "TRAIN LEAVING STATION",
+          label: "Level 1: Gentle",
           color: "text-orange-500",
           icon: <ShieldAlert size={18} />,
         };
       case 2:
         return {
-          label: "ENGINE IS STEAMING",
+          label: "Level 2: Urgent",
           color: "text-red-500",
           icon: <Bomb size={18} />,
         };
       case 3:
         return {
-          label: "CHOO CHOO A COMIN' FUCKER",
+          label: "Level 3: NUCLEAR",
           color: "text-red-700 animate-pulse",
           icon: <TrainFront size={18} />,
         };
       default:
         return {
-          label: "TRACKS CLEAR",
+          label: "On Track",
           color: "text-slate-400",
           icon: <CheckCircle size={18} />,
         };
@@ -223,20 +390,37 @@ export default function InvoicesAndPayments({ initialProject }) {
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 items-start pb-20">
-      {/* 🚨 MOBILE: SIDEBAR MOVES TOP AS HORIZONTAL SCROLL LIST */}
-      <div className="w-full lg:w-80 space-y-6 lg:sticky lg:top-8 self-start shrink-0">
-        <div className="hidden lg:flex bg-white rounded-[2rem] border p-6 shadow-sm flex-col items-center gap-4">
-          <img
-            src="/images/dndl-logo.png"
-            className="w-32 h-32 object-contain"
-            alt="Logo"
-          />
-          <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest text-center">
-            Daniel (not Day) Lewis: Audiobook Actor
-          </p>
-        </div>
+      {/* TOAST & MODAL */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <ActionModal
+        {...modal}
+        onCancel={() => setModal({ ...modal, isOpen: false })}
+        onConfirm={modal.action}
+      />
 
+      {/* SIDEBAR */}
+      <div className="w-full lg:w-80 space-y-6 lg:sticky lg:top-8 self-start shrink-0">
         <div className="bg-white rounded-[2rem] border flex flex-col overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-slate-100">
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                size={14}
+              />
+              <input
+                placeholder="Filter Invoices..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
           <div className="p-2 flex border-b bg-slate-50">
             {["open", "waiting", "paid"].map((t) => (
               <button
@@ -253,29 +437,42 @@ export default function InvoicesAndPayments({ initialProject }) {
             ))}
           </div>
 
-          <div className="p-4 space-y-2 max-h-[30vh] lg:max-h-[40vh] overflow-y-auto custom-scrollbar">
+          <div className="p-2 space-y-1 max-h-[30vh] lg:max-h-[50vh] overflow-y-auto custom-scrollbar">
             {projects
               .filter(
                 (p) =>
                   (invoices.find((i) => i.project_id === p.id)?.ledger_tab ||
                     "open") === activeTab
               )
+              .filter((p) =>
+                p.book_title.toLowerCase().includes(searchQuery.toLowerCase())
+              )
               .map((p) => (
                 <button
                   key={p.id}
                   onClick={() => setSelectedProject(p)}
-                  className={`w-full text-left p-4 rounded-2xl transition-all ${
+                  className={`w-full text-left p-3 rounded-xl transition-all border border-transparent ${
                     selectedProject?.id === p.id
-                      ? "bg-slate-900 text-white shadow-xl"
-                      : "hover:bg-slate-50 text-slate-600"
+                      ? "bg-slate-900 text-white shadow-md"
+                      : "hover:bg-slate-50 hover:border-slate-100 text-slate-600"
                   }`}
                 >
-                  <p className="text-[9px] font-black uppercase opacity-60 leading-none mb-1">
-                    Inv # {p.ref_number}
-                  </p>
-                  <p className="font-bold text-sm truncate">{p.book_title}</p>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[9px] font-black uppercase opacity-60">
+                      Inv #{p.ref_number}
+                    </span>
+                    <span
+                      className={`w-2 h-2 rounded-full ${activeTab === "paid" ? "bg-emerald-400" : "bg-slate-200"}`}
+                    ></span>
+                  </div>
+                  <p className="font-bold text-xs truncate">{p.book_title}</p>
                 </button>
               ))}
+            {projects.length === 0 && (
+              <div className="p-8 text-center text-xs text-slate-400 font-bold italic">
+                No active projects
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -287,7 +484,7 @@ export default function InvoicesAndPayments({ initialProject }) {
           </div>
         ) : (
           <div className="space-y-10">
-            {/* HEADER & ACTIONS */}
+            {/* HEADER */}
             <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center bg-white sticky top-0 z-20 pb-6 border-b gap-4">
               <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter leading-none">
                 Collection: {selectedProject.ref_number}
@@ -313,11 +510,7 @@ export default function InvoicesAndPayments({ initialProject }) {
                           />
                         }
                         fileName={`INV_${selectedProject.ref_number}.pdf`}
-                        className={`flex-grow xl:flex-grow-0 px-4 md:px-6 py-4 rounded-2xl font-black uppercase text-[10px] md:text-xs flex items-center justify-center gap-2 shadow-xl ${
-                          overdueDays > 0
-                            ? "bg-red-600 text-white"
-                            : "bg-blue-600 text-white hover:bg-blue-700"
-                        }`}
+                        className={`flex-grow xl:flex-grow-0 px-4 md:px-6 py-4 rounded-2xl font-black uppercase text-[10px] md:text-xs flex items-center justify-center gap-2 shadow-xl ${overdueDays > 0 ? "bg-red-600 text-white" : "bg-blue-600 text-white hover:bg-blue-700"}`}
                       >
                         {({ loading }) =>
                           loading ? (
@@ -336,11 +529,7 @@ export default function InvoicesAndPayments({ initialProject }) {
                 )}
                 <button
                   onClick={copyEmailDraft}
-                  className={`flex-grow xl:flex-grow-0 px-4 md:px-5 py-4 rounded-2xl font-black uppercase text-[10px] md:text-xs flex items-center justify-center gap-2 transition-all shadow-xl ${
-                    mailFeedback
-                      ? "bg-emerald-500 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
+                  className={`flex-grow xl:flex-grow-0 px-4 md:px-5 py-4 rounded-2xl font-black uppercase text-[10px] md:text-xs flex items-center justify-center gap-2 transition-all shadow-xl ${mailFeedback ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                 >
                   {mailFeedback ? (
                     <CheckCircle size={14} />
@@ -362,16 +551,22 @@ export default function InvoicesAndPayments({ initialProject }) {
                   )}{" "}
                   {isEditing ? "Lock In" : "Edit"}
                 </button>
+
+                {/* COMPLETE PROJECT BUTTON */}
+                {!isEditing && (
+                  <button
+                    onClick={triggerComplete}
+                    className="flex-grow xl:flex-grow-0 px-6 md:px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black uppercase text-[10px] md:text-xs shadow-xl shadow-emerald-200 flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Trophy size={16} /> Complete
+                  </button>
+                )}
               </div>
             </div>
 
             {/* LEDGER MATH */}
             <div
-              className={`rounded-[3rem] p-6 md:p-12 text-white shadow-2xl space-y-8 md:space-y-12 transition-all duration-500 ${
-                formData.reminders_sent === 3
-                  ? "bg-red-950 ring-4 md:ring-8 ring-red-600 animate-[pulse_2s_infinite]"
-                  : "bg-slate-950"
-              }`}
+              className={`rounded-[3rem] p-6 md:p-12 text-white shadow-2xl space-y-8 md:space-y-12 transition-all duration-500 ${formData.reminders_sent === 3 ? "bg-red-950 ring-4 md:ring-8 ring-red-600 animate-[pulse_2s_infinite]" : "bg-slate-950"}`}
             >
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
                 {[
@@ -388,7 +583,7 @@ export default function InvoicesAndPayments({ initialProject }) {
                       type="number"
                       step="0.01"
                       disabled={!isEditing}
-                      className="bg-slate-900 text-white text-lg md:text-2xl font-black p-3 md:p-4 rounded-2xl w-full border border-slate-800 outline-none focus:border-emerald-500"
+                      className="bg-slate-900 text-white text-lg md:text-2xl font-black p-3 md:p-4 rounded-2xl w-full border border-slate-800 outline-none focus:border-emerald-500 transition-colors"
                       value={formData[f.v]}
                       onChange={(e) =>
                         setFormData({ ...formData, [f.v]: e.target.value })
@@ -416,11 +611,7 @@ export default function InvoicesAndPayments({ initialProject }) {
                         onClick={() =>
                           setFormData({ ...formData, ledger_tab: t })
                         }
-                        className={`flex-1 md:flex-none px-4 md:px-6 py-3 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${
-                          formData.ledger_tab === t
-                            ? "bg-white text-slate-900 shadow-2xl scale-105"
-                            : "text-slate-500 hover:text-slate-300"
-                        }`}
+                        className={`flex-1 md:flex-none px-4 md:px-6 py-3 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${formData.ledger_tab === t ? "bg-white text-slate-900 shadow-2xl scale-105" : "text-slate-500 hover:text-slate-300"}`}
                       >
                         {t}
                       </button>
@@ -430,9 +621,8 @@ export default function InvoicesAndPayments({ initialProject }) {
               </div>
             </div>
 
-            {/* STATUS & ASSET LINKS */}
+            {/* LINKS */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-              {/* PAYMENT LINK */}
               <div className="p-6 md:p-10 rounded-[2.5rem] bg-slate-50 border shadow-sm space-y-4">
                 <h3 className="font-black uppercase text-xs tracking-widest flex items-center gap-2">
                   <Link2 size={16} /> Payment Link
@@ -456,8 +646,6 @@ export default function InvoicesAndPayments({ initialProject }) {
                   </a>
                 )}
               </div>
-
-              {/* CONTRACT LINK (NEW) */}
               <div className="p-6 md:p-10 rounded-[2.5rem] bg-slate-50 border shadow-sm space-y-4">
                 <h3 className="font-black uppercase text-xs tracking-widest flex items-center gap-2 text-purple-600">
                   <Briefcase size={16} /> Contract / Agreement
@@ -486,33 +674,10 @@ export default function InvoicesAndPayments({ initialProject }) {
               </div>
             </div>
 
-            <div className="p-6 md:p-10 rounded-[2.5rem] bg-slate-50 border shadow-sm space-y-4">
-              <h3 className="font-black uppercase text-xs tracking-widest flex items-center gap-2">
-                <FileText size={16} /> Notes
-              </h3>
-              {isEditing ? (
-                <textarea
-                  className="w-full h-24 p-4 rounded-xl border text-xs font-bold resize-none"
-                  value={formData.custom_note || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, custom_note: e.target.value })
-                  }
-                />
-              ) : (
-                <p className="text-xs font-bold italic">
-                  {formData.custom_note || "No notes."}
-                </p>
-              )}
-            </div>
-
-            {/* STRIKE SYSTEM & DATES */}
+            {/* STATUS & DATES */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
               <div
-                className={`p-6 md:p-10 rounded-[2.5rem] border-2 transition-all duration-300 flex flex-col justify-center gap-6 ${
-                  formData.reminders_sent === 3
-                    ? "bg-red-50 border-red-600"
-                    : "bg-slate-50 border-slate-100"
-                }`}
+                className={`p-6 md:p-10 rounded-[2.5rem] border-2 transition-all duration-300 flex flex-col justify-center gap-6 ${formData.reminders_sent === 3 ? "bg-red-50 border-red-600" : "bg-slate-50 border-slate-100"}`}
               >
                 <div className="flex items-center justify-between">
                   <h3
@@ -548,15 +713,7 @@ export default function InvoicesAndPayments({ initialProject }) {
                   {[1, 2, 3].map((s) => (
                     <div
                       key={s}
-                      className={`h-16 md:h-20 rounded-[1.5rem] flex items-center justify-center border-2 ${
-                        formData.reminders_sent >= s
-                          ? s === 3
-                            ? "bg-red-700 border-red-900 text-white shadow-2xl"
-                            : s === 2
-                              ? "bg-red-500 border-red-600 text-white shadow-lg"
-                              : "bg-orange-500 border-orange-600 text-white shadow-md"
-                          : "bg-white border-slate-100 opacity-40"
-                      }`}
+                      className={`h-16 md:h-20 rounded-[1.5rem] flex items-center justify-center border-2 ${formData.reminders_sent >= s ? (s === 3 ? "bg-red-700 border-red-900 text-white shadow-2xl" : s === 2 ? "bg-red-500 border-red-600 text-white shadow-lg" : "bg-orange-500 border-orange-600 text-white shadow-md") : "bg-white border-slate-100 opacity-40"}`}
                     >
                       {s === 1 && (
                         <ShieldAlert
@@ -613,11 +770,7 @@ export default function InvoicesAndPayments({ initialProject }) {
                   <input
                     type="date"
                     disabled={!isEditing}
-                    className={`w-full p-4 rounded-2xl border text-sm font-bold bg-transparent outline-none ${
-                      overdueDays > 0
-                        ? "text-red-600 border-red-200 shadow-xl"
-                        : "border-slate-200"
-                    }`}
+                    className={`w-full p-4 rounded-2xl border text-sm font-bold bg-transparent outline-none ${overdueDays > 0 ? "text-red-600 border-red-200 shadow-xl" : "border-slate-200"}`}
                     value={formData.due_date || ""}
                     onChange={(e) =>
                       setFormData({ ...formData, due_date: e.target.value })

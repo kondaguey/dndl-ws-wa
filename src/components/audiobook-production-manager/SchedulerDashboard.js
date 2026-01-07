@@ -152,9 +152,6 @@ export default function SchedulerDashboard() {
     };
   }, [modalOpen, alertConfig.isOpen]);
 
-  // =========================================================================
-  // 1. FETCH DATA
-  // =========================================================================
   const fetchCalendar = async () => {
     setCalendarLoading(true);
     try {
@@ -164,7 +161,9 @@ export default function SchedulerDashboard() {
           .select("*")
           .neq("status", "archived")
           .neq("status", "deleted")
-          .neq("status", "postponed"),
+          .neq("status", "postponed")
+          .neq("status", "cinesonic"), // <--- THIS LINE EXCLUDES THEM FROM CALENDAR
+
         supabase
           .from("7_bookouts")
           .select("id, reason, type, start_date, end_date"),
