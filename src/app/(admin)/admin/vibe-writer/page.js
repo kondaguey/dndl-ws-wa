@@ -37,6 +37,7 @@ import VibeImageStudio from "@/src/components/vibe-writer/VibeImageStudio";
 import AssetSidebar from "@/src/components/vibe-writer/AssetSidebar";
 import PopulateMeta from "@/src/components/vibe-writer/PopulateMeta";
 import MeteorologicalEffect from "@/src/components/vibe-writer/MeteorologicalEffect";
+import VibeTunes from "@/src/components/vibe-writer/VibeTunes"; // Import the new widget
 
 const DystopianSnow = dynamic(
   () => import("@/src/components/vibe-writer/DystopianTheme"),
@@ -123,6 +124,7 @@ export default function MasterEditorPage() {
   const [date, setDate] = useState("");
   const [author, setAuthor] = useState("");
   const [imageCaption, setImageCaption] = useState("");
+  const [audioUrl, setAudioUrl] = useState(null);
   const [images, setImages] = useState({
     main: "",
     img2: "",
@@ -662,6 +664,11 @@ export default function MasterEditorPage() {
                 themeBorderClass={themeStyle.border}
                 bgOpacity={bgOpacity}
               />
+              <VibeTunes
+                url={audioUrl}
+                onClose={() => setAudioUrl(null)}
+                isDark={isDark}
+              />
               <AssetSidebar
                 images={images}
                 onUpload={handleFileUpload}
@@ -671,6 +678,7 @@ export default function MasterEditorPage() {
                 uploadingSlot={uploadingSlot}
                 isDark={isDark}
                 bgOpacity={bgOpacity}
+                onPlayAudio={(url) => setAudioUrl(url)} // Callback
               />
             </div>
             <div className="lg:col-span-8 space-y-8 order-2 lg:order-2">
