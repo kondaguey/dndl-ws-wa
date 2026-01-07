@@ -30,6 +30,8 @@ import {
   XCircle,
   Image as ImageIcon,
   UploadCloud,
+  Plus, // Added for line items
+  Trash2, // Added for line items
 } from "lucide-react";
 
 import InvoicePDF from "./InvoicePDF";
@@ -163,6 +165,7 @@ export default function InvoicesAndPayments({ initialProject }) {
     pfh_rate: 0,
     sag_ph_percent: 0,
     convenience_fee: 0,
+    line_items: [], // ADDED FOR CUSTOM ITEMS
     payment_link: "",
     contract_link: "",
     custom_note: "",
@@ -193,7 +196,6 @@ export default function InvoicesAndPayments({ initialProject }) {
     const { data: iData } = await supabase.from("9_invoices").select("*");
     const existingInvoiceIds = new Set(iData?.map((i) => i.project_id));
 
-    // Filter: Must be in Production OR Have an Invoice
     const validProjects = (bData || []).filter((p) => {
       return activeProductionIds.has(p.id) || existingInvoiceIds.has(p.id);
     });
@@ -207,7 +209,6 @@ export default function InvoicesAndPayments({ initialProject }) {
     fetchData();
   }, []);
 
-  // --- SYNC SELECTION ---
   useEffect(() => {
     if (projects.length > 0) {
       if (
@@ -223,7 +224,6 @@ export default function InvoicesAndPayments({ initialProject }) {
     }
   }, [projects]);
 
-  // --- LOAD DATA ---
   useEffect(() => {
     const loadData = async () => {
       if (!selectedProject?.id) return;
@@ -242,6 +242,9 @@ export default function InvoicesAndPayments({ initialProject }) {
         setFormData({
           ...existingInvoice,
           logo_url: existingInvoice.logo_url || savedLogo,
+          line_items: Array.isArray(existingInvoice.line_items)
+            ? existingInvoice.line_items
+            : [],
         });
         setIsEditing(false);
       } else {
@@ -257,6 +260,7 @@ export default function InvoicesAndPayments({ initialProject }) {
           pfh_rate: prodInfo?.pfh_rate || 250,
           sag_ph_percent: 0,
           convenience_fee: 0,
+          line_items: [],
           payment_link: "",
           contract_link: "",
           custom_note: "",
@@ -273,20 +277,48 @@ export default function InvoicesAndPayments({ initialProject }) {
     loadData();
   }, [selectedProject, invoices, productionData]);
 
+  // --- LINE ITEMS LOGIC ---
+  const addLineItem = () => {
+    setFormData((prev) => ({
+      ...prev,
+      line_items: [...prev.line_items, { description: "", amount: 0 }],
+    }));
+  };
+
+  const updateLineItem = (index, field, value) => {
+    const newItems = [...formData.line_items];
+    newItems[index][field] = value;
+    setFormData((prev) => ({ ...prev, line_items: newItems }));
+  };
+
+  const removeLineItem = (index) => {
+    const newItems = [...formData.line_items];
+    newItems.splice(index, 1);
+    setFormData((prev) => ({ ...prev, line_items: newItems }));
+  };
+
   // --- CALCS ---
   const calcs = useMemo(() => {
     const base = Number(formData.pfh_count) * Number(formData.pfh_rate);
     const sag = base * (Number(formData.sag_ph_percent) / 100);
-    const total = base + sag + Number(formData.convenience_fee);
+
+    // Sum custom line items
+    const customItemsTotal = (formData.line_items || []).reduce(
+      (acc, item) => acc + Number(item.amount),
+      0
+    );
+
+    const total =
+      base + sag + Number(formData.convenience_fee) + customItemsTotal;
     return { base, sag, total };
   }, [
     formData.pfh_count,
     formData.pfh_rate,
     formData.sag_ph_percent,
     formData.convenience_fee,
+    formData.line_items,
   ]);
 
-  // --- DATE LOGIC ---
   useEffect(() => {
     if (formData.invoiced_date && isEditing) {
       let date = new Date(formData.invoiced_date);
@@ -306,7 +338,6 @@ export default function InvoicesAndPayments({ initialProject }) {
     return due ? Math.ceil((today - due) / (1000 * 60 * 60 * 24)) : 0;
   }, [formData.due_date, formData.ledger_tab]);
 
-  // --- LOGO UPLOAD ---
   const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -315,9 +346,8 @@ export default function InvoicesAndPayments({ initialProject }) {
     try {
       const fileExt = file.name.split(".").pop();
       const fileName = `logo-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`; // Corrected path
+      const filePath = `logos/${fileName}`;
 
-      // Upload to 'admin' bucket in 'logos' folder
       const { error: uploadError } = await supabase.storage
         .from("admin")
         .upload(filePath, file);
@@ -339,34 +369,57 @@ export default function InvoicesAndPayments({ initialProject }) {
     }
   };
 
-  // --- SAVE ---
   const handleSave = async (silent = false) => {
     if (!selectedProject) return;
     if (!silent) setLoading(true);
 
+    // 1. Prepare Payload with Strict Types
     const payload = {
-      ...formData,
-      total_amount: calcs.total,
       project_id: selectedProject.id,
+      // Force Numeric
+      pfh_count: Number(formData.pfh_count) || 0,
+      pfh_rate: Number(formData.pfh_rate) || 0,
+      sag_ph_percent: Number(formData.sag_ph_percent) || 0,
+      convenience_fee: Number(formData.convenience_fee) || 0,
+      est_tax_rate: 25, // Default or from state
+      total_amount: Number(calcs.total) || 0,
+      reminders_sent: Number(formData.reminders_sent) || 0,
+
+      // Strings/Dates
+      invoiced_date: formData.invoiced_date || null,
+      due_date: formData.due_date || null,
+      payment_link: formData.payment_link || "",
+      contract_link: formData.contract_link || "",
+      custom_note: formData.custom_note || "",
+      ledger_tab: formData.ledger_tab || "open",
+      logo_url: formData.logo_url || "",
+      reference_number: selectedProject.ref_number, // Ensure ref is synced
+
+      // JSONB (Supabase JS client handles array -> jsonb auto, but ensure it's an array)
+      line_items: Array.isArray(formData.line_items) ? formData.line_items : [],
+
+      // Zero out the old flat expense column to avoid confusion
+      other_expenses: 0,
     };
 
-    let invoiceId = formData.id;
-    if (!invoiceId) {
-      const existing = invoices.find(
-        (i) => i.project_id === selectedProject.id
-      );
-      if (existing) invoiceId = existing.id;
-    }
-
     let result;
-    if (invoiceId) {
+
+    // 2. Determine Insert vs Update
+    // We look for an existing invoice ID attached to this project
+    const existingInvoice = invoices.find(
+      (i) => i.project_id === selectedProject.id
+    );
+
+    if (existingInvoice?.id) {
+      // UPDATE
       result = await supabase
         .from("9_invoices")
         .update(payload)
-        .eq("id", invoiceId)
+        .eq("id", existingInvoice.id)
         .select()
         .single();
     } else {
+      // INSERT (Don't include 'id' in payload)
       result = await supabase
         .from("9_invoices")
         .insert([payload])
@@ -381,18 +434,18 @@ export default function InvoicesAndPayments({ initialProject }) {
           return prev.map((i) => (i.id === result.data.id ? result.data : i));
         return [...prev, result.data];
       });
-      setFormData(result.data);
+      setFormData(result.data); // Update local state with DB response (including generated ID)
       setIsEditing(false);
       setLastSaved(Date.now());
       if (!silent) showToast("Invoice Saved");
     } else {
-      if (!silent) showToast("Save Failed", "error");
+      console.error("Supabase Error:", result.error);
+      if (!silent) showToast(`Save Failed: ${result.error.message}`, "error");
     }
     if (!silent) setLoading(false);
     return result;
   };
 
-  // --- COMPLETE LOGIC ---
   const triggerComplete = () => {
     setModal({
       isOpen: true,
@@ -568,8 +621,6 @@ export default function InvoicesAndPayments({ initialProject }) {
                   ) : (
                     <ImageIcon size={24} className="text-slate-300" />
                   )}
-
-                  {/* EDIT OVERLAY - Fixed Clickability */}
                   {isEditing && (
                     <label className="absolute inset-0 bg-slate-900/10 hover:bg-slate-900/60 flex flex-col items-center justify-center cursor-pointer z-20 transition-all">
                       <div className="opacity-0 group-hover:opacity-100 flex flex-col items-center">
@@ -595,7 +646,6 @@ export default function InvoicesAndPayments({ initialProject }) {
                     </label>
                   )}
                 </div>
-
                 <div>
                   <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter leading-none">
                     Collection: {selectedProject.ref_number}
@@ -656,8 +706,6 @@ export default function InvoicesAndPayments({ initialProject }) {
                   )}{" "}
                   {mailFeedback ? "Copied" : "Draft"}
                 </button>
-
-                {/* Save/Edit Logic Fix */}
                 <button
                   onClick={
                     isEditing
@@ -675,7 +723,6 @@ export default function InvoicesAndPayments({ initialProject }) {
                   )}{" "}
                   {isEditing ? "Lock In" : "Edit"}
                 </button>
-
                 {!isEditing && (
                   <button
                     onClick={triggerComplete}
@@ -715,6 +762,53 @@ export default function InvoicesAndPayments({ initialProject }) {
                   </div>
                 ))}
               </div>
+
+              {/* DYNAMIC LINE ITEMS EDITOR */}
+              {isEditing && (
+                <div className="border-t border-slate-800 pt-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
+                      Additional Charges / Deductions
+                    </span>
+                    <button
+                      onClick={addLineItem}
+                      className="text-[10px] font-bold uppercase text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                    >
+                      <PlusCircle size={14} /> Add Item
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {formData.line_items.map((item, idx) => (
+                      <div key={idx} className="flex gap-4">
+                        <input
+                          placeholder="Description (e.g. Late Fee)"
+                          value={item.description}
+                          onChange={(e) =>
+                            updateLineItem(idx, "description", e.target.value)
+                          }
+                          className="flex-1 bg-slate-900 border border-slate-800 rounded-lg p-3 text-sm font-bold text-white outline-none focus:border-blue-500"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Amount"
+                          value={item.amount}
+                          onChange={(e) =>
+                            updateLineItem(idx, "amount", e.target.value)
+                          }
+                          className="w-32 bg-slate-900 border border-slate-800 rounded-lg p-3 text-sm font-bold text-white outline-none focus:border-blue-500"
+                        />
+                        <button
+                          onClick={() => removeLineItem(idx)}
+                          className="text-slate-600 hover:text-red-500"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="pt-8 md:pt-10 border-t border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>
                   <span className="text-slate-500 text-[10px] md:text-[11px] font-black uppercase tracking-widest block">
@@ -744,7 +838,7 @@ export default function InvoicesAndPayments({ initialProject }) {
               </div>
             </div>
 
-            {/* LINKS & STATUS & DATES (Kept same as provided code, just ensured inputs are wired to state) */}
+            {/* LINKS & STATUS & DATES (Kept same) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
               <div className="p-6 md:p-10 rounded-[2.5rem] bg-slate-50 border shadow-sm space-y-4">
                 <h3 className="font-black uppercase text-xs tracking-widest flex items-center gap-2">

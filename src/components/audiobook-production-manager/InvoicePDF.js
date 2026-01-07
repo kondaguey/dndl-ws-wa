@@ -21,9 +21,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 20,
-    alignItems: "flex-start", // Changed to flex-start for better logo alignment
+    alignItems: "flex-start",
   },
-  // Updated Logo Style
   logo: {
     width: 80,
     height: 80,
@@ -128,7 +127,6 @@ export default function InvoicePDF({ project, data, calcs }) {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
-  // Fallback if no logo uploaded
   const logoSrc = data.logo_url || "https://placehold.co/150x150?text=LOGO";
 
   return (
@@ -136,9 +134,7 @@ export default function InvoicePDF({ project, data, calcs }) {
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <View>
-            {/* DYNAMIC LOGO HERE */}
             <Image src={logoSrc} style={styles.logo} />
-
             <Text style={styles.branding}>DnDL Creative LLC</Text>
             <Text>DBA Daniel (not Day) Lewis</Text>
             <Text>6809 Main St. #1118</Text>
@@ -172,6 +168,7 @@ export default function InvoicePDF({ project, data, calcs }) {
           </Text>
         </View>
 
+        {/* 1. Base PFH */}
         <View style={styles.tableRow}>
           <Text style={{ flex: 3 }}>Audiobook Production (Performance)</Text>
           <Text style={{ flex: 1, textAlign: "right" }}>
@@ -185,6 +182,7 @@ export default function InvoicePDF({ project, data, calcs }) {
           </Text>
         </View>
 
+        {/* 2. SAG */}
         {Number(calcs.sag) > 0 && (
           <View style={styles.tableRow}>
             <Text style={{ flex: 3 }}>
@@ -198,9 +196,10 @@ export default function InvoicePDF({ project, data, calcs }) {
           </View>
         )}
 
+        {/* 3. Convenience Fee */}
         {Number(data.convenience_fee) > 0 && (
           <View style={styles.tableRow}>
-            <Text style={{ flex: 3 }}>Multi-Performer Flat Rate</Text>
+            <Text style={{ flex: 3 }}>Multi-Performer / Admin Fee</Text>
             <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
             <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
             <Text style={{ flex: 1, textAlign: "right" }}>
@@ -208,6 +207,18 @@ export default function InvoicePDF({ project, data, calcs }) {
             </Text>
           </View>
         )}
+
+        {/* 4. DYNAMIC LINE ITEMS */}
+        {(data.line_items || []).map((item, index) => (
+          <View style={styles.tableRow} key={index}>
+            <Text style={{ flex: 3 }}>{item.description}</Text>
+            <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
+            <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
+            <Text style={{ flex: 1, textAlign: "right" }}>
+              {formatCurrency(item.amount)}
+            </Text>
+          </View>
+        ))}
 
         <View style={styles.totalSection}>
           <View style={styles.totalBox}>
