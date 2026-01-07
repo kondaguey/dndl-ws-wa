@@ -25,7 +25,8 @@ import {
   AlertTriangle,
   Rocket,
   LogOut,
-  Ghost,
+  Radar,
+  Menu, // Added Menu icon
 } from "lucide-react";
 import { FaHotdog } from "react-icons/fa6";
 import { Canvas } from "@react-three/fiber";
@@ -141,6 +142,7 @@ export default function MasterEditorPage() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [availableDrafts, setAvailableDrafts] = useState([]);
   const [uploadingSlot, setUploadingSlot] = useState(null);
+  const [showMobileActions, setShowMobileActions] = useState(false); // New state for mobile menu
 
   // --- THEME STATE ---
   const [theme, setTheme] = useState("teal");
@@ -148,10 +150,11 @@ export default function MasterEditorPage() {
   const [vibeMode, setVibeMode] = useState("glitch");
   const [bgOpacity, setBgOpacity] = useState(80);
 
-  // --- METEOROLOGICAL STATE (Simplified) ---
+  // --- METEOROLOGICAL STATE ---
+  const [showWeatherControl, setShowWeatherControl] = useState(false); // Controls the modal
   const [weatherMode, setWeatherMode] = useState("snow");
   const [weatherIntensity, setWeatherIntensity] = useState(0.5);
-  const [windVector, setWindVector] = useState(0); // -5 to 5
+  const [windVector, setWindVector] = useState(0);
   const [mountCanvas, setMountCanvas] = useState(false);
 
   useEffect(() => {
@@ -215,7 +218,7 @@ export default function MasterEditorPage() {
   const themeStyle = getThemeStyles();
   const showToast = (message, type = "success") => setToast({ message, type });
 
-  // ... (Database and Logic handlers preserved for brevity - no changes needed there) ...
+  // ... (Database handlers kept same) ...
   useEffect(() => {
     if (!date) setDate(new Date().toISOString().split("T")[0]);
   }, []);
@@ -463,15 +466,19 @@ export default function MasterEditorPage() {
         </div>
       )}
 
-      {/* --- WEATHER CONTROLS (Only visible in Dark Modes) --- */}
+      {/* --- MODALS --- */}
       {isDark && (
         <MeteorologicalEffect
+          isOpen={showWeatherControl}
+          onClose={() => setShowWeatherControl(false)}
           weatherMode={weatherMode}
           setWeatherMode={setWeatherMode}
           intensity={weatherIntensity}
           setIntensity={setWeatherIntensity}
           windVector={windVector}
           setWindVector={setWindVector}
+          bgOpacity={bgOpacity}
+          setBgOpacity={setBgOpacity}
           isDark={isDark}
         />
       )}
@@ -482,80 +489,94 @@ export default function MasterEditorPage() {
 
       <div className="h-full w-full overflow-y-auto overscroll-none md:h-auto md:overflow-visible md:overscroll-auto pb-24 md:pb-0">
         <div className="relative z-10 pt-16 pb-10 px-4 md:px-16 max-w-[1600px] mx-auto">
-          {/* Header Area */}
-          <header className="flex flex-col xl:flex-row items-center justify-between mb-12 gap-6">
+          {/* HEADER */}
+          <header className="flex flex-col xl:flex-row items-center justify-between mb-12 gap-6 relative">
             <h1
               className={`text-3xl font-black uppercase tracking-[0.4em] cursor-default transition-all duration-300 ${themeStyle.logo} ${isDark && vibeMode === "sexy" ? "sexy-text" : isDark ? "glitch-text" : ""}`}
             >
               VibeWriter™
             </h1>
+
             <div className="flex flex-wrap justify-center items-center gap-3 mt-4 xl:mt-0">
-              <div className="flex gap-2 mr-2">
+              {/* DESKTOP ACTIONS (Hidden on small mobile) */}
+              <div className="hidden md:flex flex-wrap justify-center items-center gap-3">
+                <div className="flex gap-2 mr-2">
+                  <button
+                    onClick={() => setShowClearConfirm(true)}
+                    className={themeStyle.btnGhost}
+                  >
+                    <FilePlus size={14} /> Reset
+                  </button>
+                  <button
+                    onClick={generateAndShowSql}
+                    className={themeStyle.btnGhost}
+                  >
+                    <Database size={14} /> SQL
+                  </button>
+                </div>
+                <div
+                  className={`w-px h-8 mx-2 ${isDark ? "bg-white/10" : "bg-slate-300"}`}
+                ></div>
                 <button
-                  onClick={() => setShowClearConfirm(true)}
-                  className={themeStyle.btnGhost}
+                  onClick={fetchDrafts}
+                  className={themeStyle.btnSecondary}
                 >
-                  <FilePlus size={14} /> Reset
+                  <Archive size={16} /> Archive
                 </button>
                 <button
-                  onClick={generateAndShowSql}
-                  className={themeStyle.btnGhost}
+                  onClick={() => handleDatabaseAction("DRAFT")}
+                  className={themeStyle.btnSecondary}
                 >
-                  <Database size={14} /> SQL
+                  {isSaving ? (
+                    <Loader2 className="animate-spin" size={16} />
+                  ) : (
+                    <Save size={16} />
+                  )}{" "}
+                  Save Draft
+                </button>
+                {isPublished ? (
+                  <button
+                    onClick={() => handleDatabaseAction("UNPUBLISH")}
+                    className={themeStyle.btnDanger}
+                  >
+                    <Ban size={16} /> Unpublish
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleDatabaseAction("PUBLISH")}
+                    className={themeStyle.btnPrimary}
+                  >
+                    <Rocket size={16} /> Go Live
+                  </button>
+                )}
+              </div>
+
+              {/* MOBILE ACTIONS MENU TOGGLE */}
+              <div className="md:hidden">
+                <button
+                  onClick={() => setShowMobileActions(!showMobileActions)}
+                  className={`p-3 rounded-xl border ${isDark ? "bg-white/5 border-white/10 text-white" : "bg-white border-slate-200 text-slate-800"}`}
+                >
+                  <Menu size={18} />
                 </button>
               </div>
-              <div
-                className={`w-px h-8 mx-2 hidden md:block ${isDark ? "bg-white/10" : "bg-slate-300"}`}
-              ></div>
-              <button onClick={fetchDrafts} className={themeStyle.btnSecondary}>
-                <Archive size={16} /> Archive
-              </button>
-              <button
-                onClick={() => handleDatabaseAction("DRAFT")}
-                className={themeStyle.btnSecondary}
-              >
-                {isSaving ? (
-                  <Loader2 className="animate-spin" size={16} />
-                ) : (
-                  <Save size={16} />
-                )}{" "}
-                Save Draft
-              </button>
-              {isPublished ? (
-                <button
-                  onClick={() => handleDatabaseAction("UNPUBLISH")}
-                  className={themeStyle.btnDanger}
-                >
-                  <Ban size={16} /> Unpublish
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleDatabaseAction("PUBLISH")}
-                  className={themeStyle.btnPrimary}
-                >
-                  <Rocket size={16} /> Go Live
-                </button>
-              )}
-              <div
-                className={`flex gap-2 ml-4 pl-4 border-l ${isDark ? "border-white/10" : "border-slate-300"} hidden md:flex`}
-              >
-                {/* 3. Opacity Slider Added Here */}
-                <div className="flex items-center gap-2 mr-4 border-r theme-border-dim pr-4 hidden md:flex">
-                  <Ghost
-                    size={16}
-                    className={isDark ? "text-slate-400" : "text-slate-500"}
-                  />
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={bgOpacity}
-                    onChange={(e) => setBgOpacity(e.target.value)}
-                    className="w-16 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
-                    title="Background Opacity"
-                  />
-                </div>
 
+              {/* TOGGLES (Visible on all devices) */}
+              <div
+                className={`flex gap-2 ml-4 pl-4 border-l ${isDark ? "border-white/10" : "border-slate-300"}`}
+              >
+                {/* 1. ATMOSPHERE CONTROL BTN */}
+                {isDark && (
+                  <button
+                    onClick={() => setShowWeatherControl(true)}
+                    className="p-3 rounded-xl border transition-all bg-white/5 border-white/10 text-slate-400 hover:text-teal-400 hover:border-teal-500/30"
+                    title="Atmosphere Settings"
+                  >
+                    <Radar size={16} />
+                  </button>
+                )}
+
+                {/* 2. VIBE MODE */}
                 {isDark && (
                   <button
                     onClick={toggleVibeMode}
@@ -568,6 +589,8 @@ export default function MasterEditorPage() {
                     )}
                   </button>
                 )}
+
+                {/* 3. THEME TOGGLE */}
                 <button
                   onClick={toggleTheme}
                   className={`p-3 rounded-xl border transition-all ${theme === "light" ? "bg-white border-slate-200 text-amber-500 shadow-sm" : "bg-white/5 border-white/10 hover:text-white"}`}
@@ -582,6 +605,40 @@ export default function MasterEditorPage() {
                 </button>
               </div>
             </div>
+
+            {/* MOBILE ACTIONS DROPDOWN */}
+            {showMobileActions && (
+              <div className="absolute top-full left-0 right-0 z-50 mt-2 p-4 rounded-xl border shadow-2xl animate-in slide-in-from-top-2 md:hidden bg-[var(--bg-toolbar)] backdrop-blur-xl border-[var(--theme-border)]">
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => handleDatabaseAction("PUBLISH")}
+                    className={themeStyle.btnPrimary}
+                  >
+                    <Rocket size={16} /> Go Live
+                  </button>
+                  <button
+                    onClick={() => handleDatabaseAction("DRAFT")}
+                    className={themeStyle.btnSecondary}
+                  >
+                    <Save size={16} /> Save Draft
+                  </button>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <button
+                      onClick={fetchDrafts}
+                      className={themeStyle.btnSecondary}
+                    >
+                      <Archive size={16} /> Archive
+                    </button>
+                    <button
+                      onClick={() => setShowClearConfirm(true)}
+                      className={themeStyle.btnGhost}
+                    >
+                      <FilePlus size={14} /> Reset
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </header>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
@@ -623,7 +680,6 @@ export default function MasterEditorPage() {
                 placeholder="TRANSMISSION TITLE"
                 className={`w-full p-2 md:p-4 text-2xl md:text-4xl lg:text-5xl font-black outline-none bg-transparent border-b-2 transition-colors duration-300 ${themeStyle.title}`}
               />
-              {/* 4. Pass bgOpacity prop */}
               <VibeEditor
                 initialContent={content}
                 onChange={handleLexicalChange}
@@ -657,7 +713,6 @@ export default function MasterEditorPage() {
         initialTab={studioInitialTab}
       />
 
-      {/* --- SQL MODAL --- */}
       {showSqlModal && (
         <div className="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
           <div
@@ -701,7 +756,6 @@ export default function MasterEditorPage() {
         </div>
       )}
 
-      {/* --- LOAD MODAL --- */}
       {showLoadModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div
