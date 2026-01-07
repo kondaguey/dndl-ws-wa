@@ -485,10 +485,6 @@ export default function MasterEditorPage() {
         />
       )}
 
-      <Link href="/" className={themeStyle.backBtn}>
-        <LogOut size={14} /> Exit Studio
-      </Link>
-
       <div className="h-full w-full overflow-y-auto overscroll-none md:h-auto md:overflow-visible md:overscroll-auto pb-24 md:pb-0">
         <div className="relative z-10 pt-16 pb-10 px-4 md:px-16 max-w-[1600px] mx-auto">
           {/* HEADER */}

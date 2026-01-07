@@ -104,7 +104,7 @@ export default function ProductionManager() {
         {/* HEADER AREA */}
         <div className="flex flex-col gap-6 md:gap-8 mb-8">
           <div className="flex flex-col">
-            <h1 className="text-2xl md:text-4xl font-black uppercase text-slate-900 tracking-tight mb-2 italic leading-none md:leading-tight">
+            <h1 className="text-center text-2xl md:text-4xl font-black uppercase text-slate-900 tracking-tight mb-2 italic leading-none md:leading-tight">
               Daniel (not Day) Lewis: Audiobook Actor
             </h1>
             <p className="text-slate-500 font-medium flex items-center gap-2 text-[10px] md:text-xs uppercase tracking-widest">

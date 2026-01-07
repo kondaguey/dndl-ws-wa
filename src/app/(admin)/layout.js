@@ -17,8 +17,8 @@ export default async function AdminLayout({ children }) {
 
   return (
     <div className="min-h-screen bg-slate-50 relative">
-      {/* 🚨 TINY BOTTOM LEFT CONTROLS */}
-      <div className="fixed bottom-6 left-6 z-[100] flex items-center p-1 bg-slate-900 rounded-full border border-slate-700 shadow-2xl opacity-50 hover:opacity-100 transition-opacity duration-300">
+      {/* 🚨 MOVED TO TOP LEFT (Safest Spot) */}
+      <div className="fixed top-6 left-6 z-[100] flex items-center p-1 bg-slate-900 rounded-full border border-slate-700 shadow-2xl opacity-50 hover:opacity-100 transition-opacity duration-300">
         {/* Admin Home */}
         <Link
           href="/admin"

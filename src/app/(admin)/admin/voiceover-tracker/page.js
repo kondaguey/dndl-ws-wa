@@ -50,18 +50,20 @@ const CustomSelect = ({ label, value, options, onChange, icon: Icon }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
   return (
-    <div className="relative z-20 w-full md:w-auto" ref={ref}>
+    <div className="relative z-20 w-full sm:w-auto" ref={ref}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full md:w-auto flex items-center gap-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 text-slate-300 text-xs font-bold uppercase rounded-xl px-4 py-3 transition-all justify-between min-w-[140px]"
+        className="w-full sm:w-auto flex items-center gap-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 text-slate-300 text-xs font-bold uppercase rounded-xl px-4 py-3 transition-all justify-between min-w-[140px]"
       >
-        <span className="flex items-center gap-2">
-          {Icon && <Icon size={14} className="text-slate-500" />}
-          {options.find((o) => o.value === value)?.label || label}
+        <span className="flex items-center gap-2 truncate">
+          {Icon && <Icon size={14} className="text-slate-500 shrink-0" />}
+          <span className="truncate">
+            {options.find((o) => o.value === value)?.label || label}
+          </span>
         </span>
         <ChevronDown
           size={14}
-          className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+          className={`transition-transform shrink-0 ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
       {isOpen && (
@@ -159,24 +161,21 @@ export default function VoiceoverTrackerPage() {
 
   // --- ACTIONS ---
   const updateStatus = async (id, newStatus, extraFields = {}) => {
-    // 1. Optimistic Update
     const updated = items.map((i) =>
       i.id === id ? { ...i, status: newStatus, ...extraFields } : i
     );
     setItems(updated);
     setConfirmConfig({ isOpen: false });
 
-    // 2. Database Update
     const { error } = await supabase
       .from("11_voiceover_tracker")
       .update({ status: newStatus, ...extraFields })
       .eq("id", id);
 
-    // 3. Error Handling
     if (error) {
       console.error("Update Failed:", error);
       alert("Failed to save changes. Please check your connection.");
-      fetchData(); // Revert on fail
+      fetchData();
     }
   };
 
@@ -203,7 +202,7 @@ export default function VoiceoverTrackerPage() {
         icon: ArrowLeft,
         fn: () =>
           updateStatus(id, "inbox", {
-            submitted_at: null, // Clear timestamp so it resets
+            submitted_at: null,
           }),
       },
       shortlist: {
@@ -278,7 +277,7 @@ export default function VoiceoverTrackerPage() {
     fetchData();
   };
 
-  // --- COMPONENT: STATUS BADGE (Square & Detailed) ---
+  // --- COMPONENT: STATUS BADGE ---
   const StatusBadge = ({ item }) => {
     const formatSubmission = (iso, tz) => {
       if (!iso) return { date: "UNK", time: "--" };
@@ -353,15 +352,14 @@ export default function VoiceoverTrackerPage() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-white pb-40 font-sans relative">
-      <div className="max-w-7xl mx-auto p-3 md:p-8">
-        <div className="mb-6 md:mb-8">
-          <Link
-            href="/admin"
-            className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-400 mb-4 transition-colors uppercase tracking-widest"
-          >
-            <ChevronLeft size={14} /> Back to Hub
-          </Link>
-          <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide -mx-3 px-3 md:mx-0 md:px-0 md:flex-wrap md:pb-0">
+      <div className="max-w-7xl mx-auto p-4 md:p-8">
+        {/* --- 1. CENTERED TOP NAVIGATION (Fixed Clipping) --- */}
+        <div className="mb-8 flex justify-start md:justify-center">
+          {/* FIX: Changed py-2 to p-4 (adds padding on ALL sides)
+             FIX: Changed -mx-4 to -mx-4 to pull container to edge, 
+             but the p-4 ensures the content inside isn't cut off by overflow 
+          */}
+          <div className="pt-18 md:pt-2 flex gap-2 overflow-x-auto md:overflow-visible p-4 scrollbar-hide -mx-4 md:mx-0 md:p-0 md:flex-wrap">
             {[
               "Auditions",
               "Submitted",
@@ -386,8 +384,9 @@ export default function VoiceoverTrackerPage() {
           <VoiceoverStats data={items} />
         ) : (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex flex-col xl:flex-row gap-4 mb-6">
-              <div className="relative flex-grow">
+            {/* --- 2. RESPONSIVE SEARCH & FILTERS --- */}
+            <div className="flex flex-col lg:flex-row gap-4 mb-8 items-stretch lg:items-center">
+              <div className="relative flex-grow lg:flex-grow-0 lg:w-96">
                 <Search
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
                   size={16}
@@ -396,10 +395,11 @@ export default function VoiceoverTrackerPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search Projects..."
-                  className="w-full bg-slate-800/50 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-xs font-bold text-white focus:border-blue-500 outline-none uppercase placeholder:normal-case"
+                  className="w-full bg-slate-800/50 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-xs font-bold text-white focus:border-blue-500 outline-none uppercase placeholder:normal-case transition-colors"
                 />
               </div>
-              <div className="flex flex-col md:flex-row flex-wrap gap-2">
+
+              <div className="flex flex-col sm:flex-row gap-2 flex-wrap flex-grow">
                 {activeTab === "Auditions" && (
                   <CustomSelect
                     label="Urgency"
@@ -413,41 +413,41 @@ export default function VoiceoverTrackerPage() {
                     onChange={setFocusFilter}
                   />
                 )}
-                <div className="flex gap-2 w-full md:w-auto">
-                  <CustomSelect
-                    label="Client"
-                    value={clientFilter}
-                    icon={User}
-                    options={[
-                      { label: "All Clients", value: "all" },
-                      { label: "ASP", value: "ASP" },
-                      { label: "IDIOM", value: "IDIOM" },
-                    ]}
-                    onChange={setClientFilter}
-                  />
-                  <CustomSelect
-                    label="Sort"
-                    value={sortBy}
-                    icon={ArrowUpDown}
-                    options={[
-                      { label: "Urgency", value: "urgency" },
-                      { label: "Newest", value: "newest" },
-                    ]}
-                    onChange={setSortBy}
-                  />
-                </div>
+                <CustomSelect
+                  label="Client"
+                  value={clientFilter}
+                  icon={User}
+                  options={[
+                    { label: "All Clients", value: "all" },
+                    { label: "ASP", value: "ASP" },
+                    { label: "IDIOM", value: "IDIOM" },
+                  ]}
+                  onChange={setClientFilter}
+                />
+                <CustomSelect
+                  label="Sort"
+                  value={sortBy}
+                  icon={ArrowUpDown}
+                  options={[
+                    { label: "Urgency", value: "urgency" },
+                    { label: "Newest", value: "newest" },
+                  ]}
+                  onChange={setSortBy}
+                />
               </div>
+
               <button
                 onClick={() => {
                   setEditingProject(null);
                   setIsModalOpen(true);
                 }}
-                className="w-full xl:w-auto bg-white text-black px-8 py-3 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-blue-50 transition-all shadow-lg active:scale-95 whitespace-nowrap"
+                className="w-full lg:w-auto bg-white text-black px-8 py-3 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-blue-50 transition-all shadow-lg active:scale-95 whitespace-nowrap shrink-0"
               >
                 <Wand2 size={16} /> New Audition
               </button>
             </div>
 
+            {/* --- LOADING & EMPTY STATES --- */}
             {loading ? (
               <div className="flex justify-center py-20 text-slate-500">
                 <Loader2 className="animate-spin" />
@@ -460,6 +460,7 @@ export default function VoiceoverTrackerPage() {
               </div>
             ) : (
               <div className="space-y-3">
+                {/* --- 3. RESPONSIVE CARD LAYOUT --- */}
                 {filteredItems.map((item) => (
                   <div
                     onClick={() => {
@@ -472,7 +473,9 @@ export default function VoiceoverTrackerPage() {
                     <div
                       className={`absolute left-0 top-0 bottom-0 w-1.5 ${item.client_name === "ASP" ? "bg-blue-500" : item.client_name === "IDIOM" ? "bg-purple-500" : "bg-slate-500"}`}
                     />
-                    <div className="flex md:flex-col items-center md:items-start gap-3 md:gap-2 md:w-32 shrink-0">
+
+                    {/* CLIENT & ROLE */}
+                    <div className="flex flex-row md:flex-col items-center md:items-start gap-3 md:gap-2 md:w-32 shrink-0">
                       <span
                         className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded w-fit border ${item.client_name === "ASP" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : item.client_name === "IDIOM" ? "bg-purple-500/10 text-purple-400 border-purple-500/20" : "bg-slate-700 text-slate-400 border-slate-600"}`}
                       >
@@ -485,12 +488,12 @@ export default function VoiceoverTrackerPage() {
                       )}
                     </div>
 
-                    <div className="flex-grow min-w-0 md:w-1/3">
+                    {/* MAIN INFO & LINKS */}
+                    <div className="flex-grow min-w-0 md:flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-base font-bold text-white truncate group-hover:text-blue-200 transition-colors">
                           {item.project_title}
                         </h3>
-                        {/* COUNTDOWN OR STATUS BADGE */}
                         <div onClick={(e) => e.stopPropagation()}>
                           {item.status === "inbox" ? (
                             <Countdown date={item.due_date} />
@@ -523,20 +526,24 @@ export default function VoiceoverTrackerPage() {
                       </div>
                     </div>
 
-                    <div className="md:w-1/4 border-l border-slate-700/50 pl-4 md:pl-6">
-                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                        Rate / Notes
-                      </p>
-                      <div className="text-xs text-slate-300 font-mono line-clamp-3 leading-relaxed opacity-70">
-                        {item.rate || item.specs || (
-                          <span className="italic opacity-50">
-                            No details provided
-                          </span>
-                        )}
+                    {/* NOTES/RATE */}
+                    <div className="md:w-48 lg:w-64 border-l border-slate-700/50 pl-0 md:pl-6 pt-2 md:pt-0 border-t md:border-t-0 mt-2 md:mt-0">
+                      <div className="flex flex-row md:flex-col gap-2 md:gap-0 justify-between md:justify-start items-center md:items-start">
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1 hidden md:block">
+                          Rate / Notes
+                        </p>
+                        <div className="text-xs text-slate-300 font-mono line-clamp-2 md:line-clamp-3 leading-relaxed opacity-70 w-full">
+                          {item.rate || item.specs || (
+                            <span className="italic opacity-50">
+                              No details provided
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 md:ml-auto pt-4 md:pt-0 border-t md:border-0 border-slate-700/50 mt-2 md:mt-0 overflow-x-auto pb-2 px-2 no-scrollbar">
+                    {/* ACTION BUTTONS */}
+                    <div className="flex items-center gap-2 md:ml-auto pt-4 md:pt-0 border-t md:border-0 border-slate-700/50 mt-2 md:mt-0 overflow-x-auto pb-2 md:pb-0 px-1 no-scrollbar shrink-0">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
