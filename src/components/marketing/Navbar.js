@@ -3,7 +3,21 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Menu, X, ArrowRight, Mic, Plane } from "lucide-react";
+import {
+  Menu,
+  X,
+  ArrowRight,
+  Mic,
+  Plane,
+  BookOpen,
+  Compass,
+  Handshake,
+  Feather,
+  Lightbulb,
+  Zap,
+  Mountain,
+  Target, // Added new icon options
+} from "lucide-react";
 import { createClient } from "@/src/utils/supabase/client";
 
 // --- GREETINGS ARRAY ---
@@ -27,7 +41,7 @@ function GreetingTicker({ scrolled }) {
   }, []);
 
   return (
-    <div className="flex items-center gap-2 h-full">
+    <div className="flex items-center gap-2 h-10 select-none">
       <div
         className="text-teal-600 block flex-shrink-0"
         style={{ animation: "plane-float 3s ease-in-out infinite" }}
@@ -35,7 +49,7 @@ function GreetingTicker({ scrolled }) {
         <Plane size={16} className="fill-teal-600/20 stroke-[2px]" />
       </div>
 
-      <div className="relative h-5 overflow-hidden text-left border-l-2 border-teal-600/30 pl-2 md:pl-3 w-28 md:w-64 transition-all duration-300">
+      <div className="relative h-5 overflow-hidden text-left border-l-2 border-teal-600/30 pl-2 md:pl-3 w-40 xl:w-64 transition-all duration-300">
         <div
           className="transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
           style={{ transform: `translateY(-${index * 20}px)` }}
@@ -43,7 +57,7 @@ function GreetingTicker({ scrolled }) {
           {greetings.map((text, i) => (
             <div
               key={i}
-              className="h-5 flex items-center font-mono font-bold uppercase tracking-widest text-slate-500 text-[9px] md:text-xs whitespace-nowrap"
+              className="h-5 flex items-center font-mono font-bold uppercase tracking-widest text-slate-500 text-[10px] md:text-xs whitespace-nowrap overflow-hidden text-ellipsis"
             >
               {text}
             </div>
@@ -85,7 +99,7 @@ const AnimatedMagnifyingGlass = ({ className }) => (
   </svg>
 );
 
-// --- AUDIOBOOK BUTTON (FAST ANIMATION: 3s) ---
+// --- AUDIOBOOK BUTTON (MYSTERY VERSION - ALL DEVICES) ---
 const AudiobookButton = ({ mobile = false, onClick }) => (
   <Link
     href="/scheduler"
@@ -94,19 +108,29 @@ const AudiobookButton = ({ mobile = false, onClick }) => (
       relative group overflow-hidden rounded-full 
       transition-all duration-300 
       hover:scale-105 hover:shadow-[0_0_20px_rgba(20,184,166,0.5)]
+      flex-shrink-0 flex items-center justify-center
       ${
         mobile
-          ? "w-full max-w-xs py-4 text-center mt-4 flex-shrink-0 whitespace-nowrap block"
-          : "px-5 py-2 hidden lg:block flex-shrink-0"
+          ? "w-40 max-w-xs py-4 mt-6" // Mobile: Wide touch target
+          : "hidden md:flex px-4 py-2 gap-1" // Desktop: Compact pill
       }
     `}
   >
-    {/* FAST ANIMATION (3s) */}
     <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-teal-400 via-indigo-500 to-blue-600 bg-[length:200%_auto] animate-gradient-xy" />
 
-    <div className="relative flex items-center justify-center gap-2 text-white font-black uppercase tracking-widest text-[10px] md:text-xs z-10">
-      <span>Make an Audiobook</span>
-      <Mic size={mobile ? 16 : 12} className="fill-white/20" />
+    <div className="relative flex items-center justify-center gap-2 text-white z-10">
+      {/* MIC ICON */}
+      <Mic size={mobile ? 20 : 14} className="fill-white/20" />
+
+      {/* PLUS SIGN */}
+      <span
+        className={`${mobile ? "text-sm" : "text-[10px]"} text-white/60 font-black`}
+      >
+        +
+      </span>
+
+      {/* BOOK ICON */}
+      <BookOpen size={mobile ? 20 : 14} className="fill-white/20" />
     </div>
   </Link>
 );
@@ -217,11 +241,13 @@ export default function Navbar() {
     if (results.length > 0) router.push(results[0].slug);
   };
 
+  // --- UPDATED ICONS ---
+  // You can swap 'Compass' with 'Lightbulb', 'Zap', 'Mountain', or 'Target'
   const navLinks = [
-    { name: "(voice) actor", href: "/actor" },
-    { name: "endeavors", href: "/endeavors" },
-    { name: "collab", href: "/collab" },
-    { name: "blog", href: "/blog" },
+    { name: "(voice) actor", href: "/actor", icon: Mic },
+    { name: "endeavors", href: "/endeavors", icon: Compass },
+    { name: "collab", href: "/collab", icon: Handshake },
+    { name: "blog", href: "/blog", icon: Feather },
   ];
 
   return (
@@ -238,23 +264,20 @@ export default function Navbar() {
             ${
               scrolled
                 ? "md:px-8 md:py-3 md:rounded-full md:shadow-2xl md:shadow-teal-900/10 md:backdrop-blur-3xl md:border md:border-white/50 md:bg-gradient-to-br md:from-white/90 md:via-teal-50/80 md:to-teal-200/60"
-                : "md:w-full md:max-w-[1400px] md:px-12 md:py-4"
+                : "md:w-full md:max-w-[1600px] md:px-12 md:py-4"
             }
           `}
         >
           {/* --- LEFT: LOGO & TICKER --- */}
-          {/* FIX 1: Changed md:flex-none to min-w-0 to allow shrinking */}
-          <div className="flex items-center gap-2 md:gap-8 flex-1 min-w-0">
+          <div className="flex items-center gap-3 md:gap-6 flex-1 min-w-0 h-10">
             <Link
               href={user ? "/admin" : "/"}
               className="relative z-50 flex items-center group cursor-pointer flex-shrink-0"
-              // FIX: Only open in new tab if user is logged in (going to /admin)
               target={user ? "_blank" : undefined}
             >
-              {/* 🚨 LOGO ANIMATION (SLOW - 10s) */}
-              <h1 className="font-black tracking-tighter leading-none text-lg md:text-xl lg:text-2xl transition-transform duration-300 group-hover:scale-[1.02] text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-teal-400 to-indigo-500 bg-[length:200%_auto] animate-[gradient-x_10s_ease_infinite] drop-shadow-sm">
-                <span className="md:hidden font-extrabold">D(nD)L</span>
-                <span className="hidden md:inline pr-1">
+              <h1 className="font-black tracking-tighter leading-tight text-lg md:text-xl lg:text-2xl transition-transform duration-300 group-hover:scale-[1.02] text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-teal-400 to-indigo-500 bg-[length:200%_auto] animate-[gradient-x_10s_ease_infinite] drop-shadow-sm">
+                <span className="xl:hidden font-extrabold">D(nD)L</span>
+                <span className="hidden xl:inline-block pr-1 whitespace-normal leading-tight text-left">
                   Daniel (not Day) Lewis
                 </span>
               </h1>
@@ -264,10 +287,9 @@ export default function Navbar() {
           </div>
 
           {/* --- RIGHT: NAV ITEMS --- */}
-          {/* Kept flex-shrink-0 to ensure search/buttons don't get squashed */}
-          <div className="flex items-center gap-3 md:gap-5 flex-shrink-0 pl-2">
+          <div className="flex items-center gap-2 md:gap-4 flex-shrink-0 pl-2 h-10">
             {/* DESKTOP LINKS */}
-            <nav className="hidden md:flex items-center gap-4 lg:gap-6 xl:gap-8">
+            <nav className="hidden md:flex items-center gap-4 lg:gap-8">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
@@ -288,7 +310,7 @@ export default function Navbar() {
             <div ref={searchRef} className="relative z-50 hidden md:block">
               <form
                 onSubmit={handleSearchSubmit}
-                className={`flex items-center gap-2 rounded-full px-3 py-1.5 transition-all duration-300 ${isSearchOpen ? "bg-white ring-2 ring-teal-100 w-full shadow-lg" : "bg-slate-100/50 hover:bg-white/80 border border-transparent hover:border-white/50"}`}
+                className={`flex items-center gap-2 rounded-full px-3 py-1.5 transition-all duration-300 ${isSearchOpen ? "bg-white ring-2 ring-teal-100 shadow-lg" : "bg-slate-100/50 hover:bg-white/80 border border-transparent hover:border-white/50"}`}
               >
                 <button
                   type="button"
@@ -307,7 +329,7 @@ export default function Navbar() {
                   }}
                   onFocus={() => setIsSearchOpen(true)}
                   placeholder="SEARCH"
-                  className={`bg-transparent text-base md:text-xs font-bold uppercase tracking-wider outline-none placeholder:text-slate-400 transition-all duration-300 ${isSearchOpen ? "w-32 md:w-40 opacity-100 text-slate-800 pl-1" : "w-0 opacity-0"}`}
+                  className={`bg-transparent text-xs font-bold uppercase tracking-wider outline-none placeholder:text-slate-400 transition-all duration-300 ${isSearchOpen ? "w-28 lg:w-40 opacity-100 text-slate-800 pl-1" : "w-0 opacity-0"}`}
                 />
                 {isSearchOpen && (
                   <button
@@ -363,10 +385,12 @@ export default function Navbar() {
               )}
             </div>
 
+            {/* MYSTERY BUTTON (Md/Lg) */}
             <AudiobookButton onClick={() => setIsOpen(false)} />
 
+            {/* Mobile Menu Toggle */}
             <button
-              className="md:hidden p-2 text-slate-800"
+              className="md:hidden p-2 text-slate-800 flex items-center justify-center"
               aria-label="Open menu"
               onClick={() => setIsOpen(true)}
             >
@@ -380,7 +404,7 @@ export default function Navbar() {
       <div
         className={`fixed inset-0 z-[60] bg-white/95 backdrop-blur-xl transition-all duration-300 ${isOpen ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"}`}
       >
-        <div className="w-full h-full overflow-y-auto flex flex-col items-center pt-24 pb-12 px-6 gap-8">
+        <div className="w-full h-full overflow-y-auto flex flex-col items-center pt-24 pb-12 px-6 gap-6">
           <button
             onClick={() => setIsOpen(false)}
             className="absolute top-6 right-6 group p-3 rounded-full bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-teal-100 transition-all duration-300 z-50"
@@ -391,17 +415,36 @@ export default function Navbar() {
             />
           </button>
 
-          {navLinks.map((link) => (
-            <Link
-              key={link.name}
-              href={link.href}
-              onClick={() => setIsOpen(false)}
-              className="text-3xl font-black uppercase tracking-tighter text-slate-900 hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-teal-400 hover:to-indigo-500 transition-all"
-            >
-              {link.name}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const isActive = pathname === link.href;
+            const IconComponent = link.icon;
+            return (
+              <Link
+                key={link.name}
+                href={link.href}
+                onClick={() => setIsOpen(false)}
+                className={`
+                  relative text-3xl font-black uppercase tracking-tighter transition-all duration-300 flex items-center
+                  ${
+                    isActive
+                      ? "text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-indigo-500 scale-110 ml-4"
+                      : "text-slate-900 hover:text-slate-500"
+                  }
+                `}
+              >
+                {isActive && (
+                  <IconComponent
+                    size={24}
+                    className="absolute -left-10 text-teal-500 drop-shadow-[0_0_8px_rgba(20,184,166,0.5)] animate-pulse"
+                    strokeWidth={2.5}
+                  />
+                )}
+                {link.name}
+              </Link>
+            );
+          })}
 
+          {/* MYSTERY BUTTON (Mobile) */}
           <AudiobookButton mobile={true} onClick={() => setIsOpen(false)} />
         </div>
       </div>

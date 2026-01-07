@@ -178,17 +178,23 @@ const downloadCSV = (data, filename) => {
   document.body.removeChild(link);
 };
 
+// --- UPDATED: Responsive Tab Button ---
 const TabButton = ({ active, onClick, icon: Icon, label, count }) => (
   <button
     onClick={onClick}
-    className={`flex items-center gap-2 px-8 py-4 border-b-2 transition-all duration-200 outline-none focus:outline-none focus:ring-0 ${
-      active
-        ? "border-slate-900 text-slate-900 bg-slate-50 font-black tracking-tight"
-        : "border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50 font-medium"
-    }`}
+    className={`
+      flex-1 md:flex-none flex items-center justify-center gap-2 
+      py-3 md:py-4 md:px-8 border-b-2 transition-all duration-200 
+      outline-none focus:outline-none focus:ring-0
+      ${
+        active
+          ? "border-slate-900 text-slate-900 bg-slate-50 font-black tracking-tight"
+          : "border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50 font-medium"
+      }
+    `}
   >
     <Icon size={18} className={active ? "text-slate-900" : "text-slate-400"} />
-    <span>{label}</span>
+    <span className="text-xs md:text-sm whitespace-nowrap">{label}</span>
     {count !== undefined && (
       <span
         className={`text-[10px] px-2 py-0.5 rounded-full font-bold ml-1 ${
@@ -220,7 +226,7 @@ const StatusBadge = ({ status, type = "prospect" }) => {
 
     return (
       <span
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide ${style}`}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide whitespace-nowrap ${style}`}
       >
         <Icon size={12} strokeWidth={2.5} />
         {status}
@@ -264,7 +270,7 @@ const StatusBadge = ({ status, type = "prospect" }) => {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide ${style}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide whitespace-nowrap ${style}`}
     >
       {IconComp && <IconComp size={12} strokeWidth={2.5} />}
       {label}
@@ -284,7 +290,7 @@ const DaysTicker = ({ date }) => {
 
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold ${colorClass}`}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold whitespace-nowrap ${colorClass}`}
     >
       <Briefcase size={10} />
       {days}d
@@ -302,7 +308,7 @@ const SortableHeader = ({
   const isActive = currentSort.key === sortKey;
   return (
     <th
-      className={`px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group select-none text-${align} outline-none`}
+      className={`px-4 md:px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group select-none text-${align} outline-none whitespace-nowrap`}
       onClick={() => onSort(sortKey)}
     >
       <div
@@ -536,8 +542,8 @@ export default function ResponsiveLeads() {
           ? 1
           : -1
         : aVal < bVal
-        ? 1
-        : -1;
+          ? 1
+          : -1;
     });
   }, [
     activeTab,
@@ -550,7 +556,7 @@ export default function ResponsiveLeads() {
   ]);
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto space-y-8 bg-slate-50 min-h-screen font-sans relative p-6">
+    <div className="w-full max-w-[1600px] mx-auto space-y-6 md:space-y-8 bg-slate-50 min-h-screen font-sans relative p-4 md:p-6">
       <input
         type="file"
         ref={fileInputRef}
@@ -570,70 +576,74 @@ export default function ResponsiveLeads() {
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      {/* --- UPDATED: Header Section Stacks on Mobile --- */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-4">
         <div>
-          <h2 className="text-3xl font-black uppercase text-slate-900 tracking-tight">
+          <h2 className="text-2xl md:text-3xl font-black uppercase text-slate-900 tracking-tight">
             Lead Ops
           </h2>
-          <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">
+          <p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">
             Admin Dashboard
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-2 w-full md:w-auto">
             <button
               onClick={handleImportTrigger}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 rounded-xl shadow-sm transition-all font-bold text-xs uppercase tracking-wide"
+              className="flex-1 md:flex-none flex justify-center items-center gap-2 px-3 md:px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 rounded-xl shadow-sm transition-all font-bold text-xs uppercase tracking-wide"
             >
               <FileSpreadsheet size={16} className="text-emerald-500" /> Import
-              CSV
             </button>
             <button
               onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 rounded-xl shadow-sm transition-all font-bold text-xs uppercase tracking-wide"
+              className="flex-1 md:flex-none flex justify-center items-center gap-2 px-3 md:px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 rounded-xl shadow-sm transition-all font-bold text-xs uppercase tracking-wide"
             >
-              <Download size={16} /> Export List
+              <Download size={16} /> Export
             </button>
           </div>
-          <div className="w-px h-8 bg-slate-200 mx-1"></div>
-          <div className="flex items-center gap-3 bg-white p-2 rounded-xl shadow-sm border border-slate-200">
-            <Search className="text-slate-400 ml-2" size={18} />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="px-2 outline-none text-slate-700 w-32 md:w-48 bg-transparent text-sm font-medium"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="text-slate-400 hover:text-red-500"
-              >
-                <CloseIcon size={16} />
-              </button>
-            )}
+          {/* Vertical Divider Hidden on Mobile */}
+          <div className="hidden md:block w-px h-8 bg-slate-200 mx-1"></div>
+
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="flex-1 flex items-center gap-3 bg-white p-2 rounded-xl shadow-sm border border-slate-200">
+              <Search className="text-slate-400 ml-2" size={18} />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="px-2 outline-none text-slate-700 w-full md:w-48 bg-transparent text-sm font-medium"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="text-slate-400 hover:text-red-500"
+                >
+                  <CloseIcon size={16} />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`p-2.5 rounded-xl border transition-all flex-shrink-0 ${
+                showFilters
+                  ? "bg-slate-900 text-white"
+                  : "bg-white text-slate-600"
+              }`}
+            >
+              <Filter size={18} />
+            </button>
           </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`p-2.5 rounded-xl border transition-all ${
-              showFilters
-                ? "bg-slate-900 text-white"
-                : "bg-white text-slate-600"
-            }`}
-          >
-            <Filter size={18} />
-          </button>
         </div>
       </div>
 
       {showFilters && activeTab === "prospects" && (
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-stretch md:items-center gap-4">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
             Filters:
           </span>
           <select
-            className="p-2 border border-slate-200 rounded-lg text-xs font-bold bg-slate-50 outline-none uppercase"
+            className="p-2 border border-slate-200 rounded-lg text-xs font-bold bg-slate-50 outline-none uppercase w-full md:w-auto"
             value={filters.status}
             onChange={(e) =>
               setFilters((prev) => ({ ...prev, status: e.target.value }))
@@ -644,7 +654,7 @@ export default function ResponsiveLeads() {
             <option value="contract_sent">Contract Sent</option>
           </select>
           <select
-            className="p-2 border border-slate-200 rounded-lg text-xs font-bold bg-slate-50 outline-none uppercase"
+            className="p-2 border border-slate-200 rounded-lg text-xs font-bold bg-slate-50 outline-none uppercase w-full md:w-auto"
             value={filters.platform}
             onChange={(e) =>
               setFilters((prev) => ({ ...prev, platform: e.target.value }))
@@ -661,7 +671,8 @@ export default function ResponsiveLeads() {
       )}
 
       <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-200/60 overflow-hidden">
-        <div className="flex items-center border-b border-slate-200 bg-white px-6">
+        {/* --- UPDATED: Tabs Flex on Mobile --- */}
+        <div className="flex items-center border-b border-slate-200 bg-white px-2 md:px-6">
           <TabButton
             active={activeTab === "prospects"}
             onClick={() => setActiveTab("prospects")}
@@ -673,7 +684,7 @@ export default function ResponsiveLeads() {
             active={activeTab === "dnc"}
             onClick={() => setActiveTab("dnc")}
             icon={UserX}
-            label="Do Not Contact"
+            label="DNC" // Shortened for Mobile
             count={dncList.length}
           />
         </div>
@@ -683,8 +694,9 @@ export default function ResponsiveLeads() {
             <Loader2 className="animate-spin" /> Loading...
           </div>
         ) : (
+          // --- UPDATED: Horizontal Scroll Wrapper ---
           <div className="overflow-x-auto min-h-[400px]">
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-sm text-left whitespace-nowrap">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-200 text-[10px]">
                 <tr>
                   <SortableHeader
@@ -707,7 +719,7 @@ export default function ResponsiveLeads() {
                         currentSort={sortConfig}
                         onSort={handleSort}
                       />
-                      <th className="px-6 py-4">Notes</th>
+                      <th className="px-4 md:px-6 py-4">Notes</th>
                     </>
                   )}
                   {activeTab === "dnc" && (
@@ -718,7 +730,7 @@ export default function ResponsiveLeads() {
                         currentSort={sortConfig}
                         onSort={handleSort}
                       />
-                      <th className="px-6 py-4">Type</th>
+                      <th className="px-4 md:px-6 py-4">Type</th>
                     </>
                   )}
                   <SortableHeader
@@ -731,7 +743,7 @@ export default function ResponsiveLeads() {
                     currentSort={sortConfig}
                     onSort={handleSort}
                   />
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <th className="px-4 md:px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -743,9 +755,9 @@ export default function ResponsiveLeads() {
                     {editingState.id === row.id &&
                     editingState.listType === activeTab ? (
                       <>
-                        <td className="px-6 py-4 align-top">
+                        <td className="px-4 md:px-6 py-4 align-top">
                           <input
-                            className="border border-blue-300 p-2 rounded-lg w-full mb-2 font-bold text-slate-800"
+                            className="border border-blue-300 p-2 rounded-lg w-40 md:w-full mb-2 font-bold text-slate-800"
                             value={editingState.data.full_name || ""}
                             onChange={(e) =>
                               handleEditChange("full_name", e.target.value)
@@ -753,7 +765,7 @@ export default function ResponsiveLeads() {
                             placeholder="Name"
                           />
                           <input
-                            className="border border-slate-200 p-1.5 rounded-lg w-full text-xs text-slate-500"
+                            className="border border-slate-200 p-1.5 rounded-lg w-40 md:w-full text-xs text-slate-500"
                             value={editingState.data.email || ""}
                             onChange={(e) =>
                               handleEditChange("email", e.target.value)
@@ -763,9 +775,9 @@ export default function ResponsiveLeads() {
                         </td>
                         {activeTab === "prospects" && (
                           <>
-                            <td className="px-6 py-4 align-top">
+                            <td className="px-4 md:px-6 py-4 align-top">
                               <select
-                                className="border p-2 rounded-lg w-full text-xs mb-2 bg-white"
+                                className="border p-2 rounded-lg w-32 md:w-full text-xs mb-2 bg-white"
                                 value={editingState.data.platform || ""}
                                 onChange={(e) =>
                                   handleEditChange("platform", e.target.value)
@@ -778,7 +790,7 @@ export default function ResponsiveLeads() {
                                 ))}
                               </select>
                               <select
-                                className="border p-2 rounded-lg w-full text-xs bg-white text-slate-500"
+                                className="border p-2 rounded-lg w-32 md:w-full text-xs bg-white text-slate-500"
                                 value={editingState.data.lead_source || ""}
                                 onChange={(e) =>
                                   handleEditChange(
@@ -794,9 +806,9 @@ export default function ResponsiveLeads() {
                                 ))}
                               </select>
                             </td>
-                            <td className="px-6 py-4 align-top">
+                            <td className="px-4 md:px-6 py-4 align-top">
                               <select
-                                className="border border-blue-300 p-2 rounded-lg w-full bg-white font-medium"
+                                className="border border-blue-300 p-2 rounded-lg w-32 md:w-full bg-white font-medium"
                                 value={editingState.data.status || ""}
                                 onChange={(e) =>
                                   handleEditChange("status", e.target.value)
@@ -810,9 +822,9 @@ export default function ResponsiveLeads() {
                                 <option value="closed_lost">Closed Lost</option>
                               </select>
                             </td>
-                            <td className="px-6 py-4 align-top">
+                            <td className="px-4 md:px-6 py-4 align-top">
                               <textarea
-                                className="border p-2 rounded-lg w-full text-xs h-20 resize-none bg-white"
+                                className="border p-2 rounded-lg w-48 md:w-full text-xs h-20 resize-none bg-white"
                                 value={editingState.data.next_action || ""}
                                 onChange={(e) =>
                                   handleEditChange(
@@ -827,9 +839,9 @@ export default function ResponsiveLeads() {
                         )}
                         {activeTab === "dnc" && (
                           <>
-                            <td className="px-6 py-4 align-top">
+                            <td className="px-4 md:px-6 py-4 align-top">
                               <select
-                                className="border p-2 rounded w-full"
+                                className="border p-2 rounded w-32 md:w-full"
                                 value={editingState.data.reason || ""}
                                 onChange={(e) =>
                                   handleEditChange("reason", e.target.value)
@@ -842,9 +854,9 @@ export default function ResponsiveLeads() {
                                 ))}
                               </select>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 md:px-6 py-4">
                               <input
-                                className="border p-2 rounded w-full"
+                                className="border p-2 rounded w-32 md:w-full"
                                 value={editingState.data.indie_or_company || ""}
                                 onChange={(e) =>
                                   handleEditChange(
@@ -856,10 +868,10 @@ export default function ResponsiveLeads() {
                             </td>
                           </>
                         )}
-                        <td className="px-6 py-4 align-top">
+                        <td className="px-4 md:px-6 py-4 align-top">
                           <input
                             type="date"
-                            className="border p-2 rounded-lg w-full text-xs"
+                            className="border p-2 rounded-lg w-32 md:w-full text-xs"
                             value={
                               (activeTab === "prospects"
                                 ? editingState.data.last_reply_date
@@ -875,7 +887,7 @@ export default function ResponsiveLeads() {
                             }
                           />
                         </td>
-                        <td className="px-6 py-4 text-right align-top">
+                        <td className="px-4 md:px-6 py-4 text-right align-top">
                           <div className="flex justify-end gap-2">
                             <button
                               onClick={saveEdit}
@@ -894,7 +906,7 @@ export default function ResponsiveLeads() {
                       </>
                     ) : (
                       <>
-                        <td className="px-6 py-4">
+                        <td className="px-4 md:px-6 py-4">
                           <div className="font-bold text-slate-800 text-sm">
                             {row.full_name}
                           </div>
@@ -910,7 +922,7 @@ export default function ResponsiveLeads() {
                         </td>
                         {activeTab === "prospects" && (
                           <>
-                            <td className="px-6 py-4">
+                            <td className="px-4 md:px-6 py-4">
                               <div className="flex items-center gap-2 text-slate-700 font-bold text-xs">
                                 <PlatformIcon platform={row.platform} />
                                 {row.platform || "Unknown"}
@@ -919,13 +931,13 @@ export default function ResponsiveLeads() {
                                 {row.lead_source}
                               </div>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 md:px-6 py-4">
                               <StatusBadge
                                 status={row.status}
                                 type="prospect"
                               />
                             </td>
-                            <td className="px-6 py-4 max-w-xs">
+                            <td className="px-4 md:px-6 py-4 max-w-xs whitespace-normal">
                               {row.next_action ? (
                                 <div className="flex items-start gap-2 text-slate-600 text-xs bg-amber-50/50 p-2 rounded-lg border border-amber-100">
                                   <StickyNote
@@ -944,15 +956,15 @@ export default function ResponsiveLeads() {
                         )}
                         {activeTab === "dnc" && (
                           <>
-                            <td className="px-6 py-4">
+                            <td className="px-4 md:px-6 py-4">
                               <StatusBadge status={row.reason} type="dnc" />
                             </td>
-                            <td className="px-6 py-4 text-slate-600 text-xs">
+                            <td className="px-4 md:px-6 py-4 text-slate-600 text-xs">
                               {row.indie_or_company}
                             </td>
                           </>
                         )}
-                        <td className="px-6 py-4">
+                        <td className="px-4 md:px-6 py-4">
                           <div className="flex flex-col gap-2">
                             <span className="text-slate-700 font-bold text-xs">
                               {activeTab === "prospects"
@@ -968,25 +980,26 @@ export default function ResponsiveLeads() {
                             />
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <td className="px-4 md:px-6 py-4 text-right">
+                          {/* --- UPDATED: Actions Visible on Mobile --- */}
+                          <div className="flex items-center justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => startEdit(row, activeTab)}
-                              className="text-slate-300 hover:text-blue-600 p-2 rounded-lg"
+                              className="text-slate-400 hover:text-blue-600 p-2 rounded-lg"
                             >
                               <Edit2 size={16} />
                             </button>
                             {activeTab === "prospects" && (
                               <button
                                 onClick={() => handleMoveToDNC(row)}
-                                className="text-slate-300 hover:text-amber-600 p-2 rounded-lg"
+                                className="text-slate-400 hover:text-amber-600 p-2 rounded-lg"
                               >
                                 <Ban size={16} />
                               </button>
                             )}
                             <button
                               onClick={() => handleDelete(row.id)}
-                              className="text-slate-300 hover:text-red-600 p-2 rounded-lg"
+                              className="text-slate-400 hover:text-red-600 p-2 rounded-lg"
                             >
                               <Trash2 size={16} />
                             </button>
