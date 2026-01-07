@@ -56,9 +56,12 @@ export default async function BlogIndexPage() {
               key={post.slug}
               post={post}
               delay={index * 0.1}
-              // 🚨 THE FIX: Force the first 6 images to load IMMEDIATELY (Server Side)
-              // This prevents the white flash/pop-in on mobile load.
               priority={index < 6}
+              // 👇 ADD THIS:
+              // Mobile (1 col): 100% width
+              // Tablet (2 cols): 50% width
+              // Desktop (4 cols): 25% width
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             />
           ))}
           {!posts?.length && (

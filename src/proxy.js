@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
-export async function middleware(request) {
+// FIX: Renamed from 'middleware' to 'proxy'
+export async function proxy(request) {
   // 1. Create the base response
   let supabaseResponse = NextResponse.next({
     request,
@@ -48,7 +49,7 @@ export async function middleware(request) {
 
     // FIX: Use the redirect but COPY the cookies from supabaseResponse
     const redirectResponse = NextResponse.redirect(loginUrl);
-    copyCookies(supabaseResponse, redirectResponse); // <--- Helper function below
+    copyCookies(supabaseResponse, redirectResponse);
     return redirectResponse;
   }
 
@@ -60,7 +61,7 @@ export async function middleware(request) {
 
     // FIX: Use the redirect but COPY the cookies from supabaseResponse
     const redirectResponse = NextResponse.redirect(url);
-    copyCookies(supabaseResponse, redirectResponse); // <--- Helper function below
+    copyCookies(supabaseResponse, redirectResponse);
     return redirectResponse;
   }
 
@@ -68,8 +69,6 @@ export async function middleware(request) {
 }
 
 // --- HELPER FUNCTION ---
-// Copies cookies from the Supabase response (which might contain a refreshed token)
-// to the Redirect response so the browser actually gets the new session.
 function copyCookies(sourceResponse, destResponse) {
   const cookies = sourceResponse.cookies.getAll();
   cookies.forEach((cookie) => {

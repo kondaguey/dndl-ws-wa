@@ -37,7 +37,10 @@ import PopulateMeta from "@/src/components/vibe-writer/PopulateMeta";
 
 const DystopianSnow = dynamic(
   () => import("@/src/components/vibe-writer/DystopianSnow"),
-  { ssr: false }
+  {
+    ssr: false,
+    loading: () => null, // This prevents it from blocking the main thread
+  }
 );
 
 const supabase = createClient();
@@ -152,6 +155,16 @@ export default function MasterEditorPage() {
   const [theme, setTheme] = useState("teal");
   const isDark = theme !== "light";
   const [vibeMode, setVibeMode] = useState("glitch");
+
+  // --- PERFORMANCE OPTIMIZATION STATE ---
+  const [mountCanvas, setMountCanvas] = useState(false);
+
+  // --- PERFORMANCE OPTIMIZATION EFFECT ---
+  // Delays the 3D Canvas loading by 1.5s to prevent main thread blocking on mobile
+  useEffect(() => {
+    const timer = setTimeout(() => setMountCanvas(true), 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const getThemeStyles = () => {
     const commonBtn =
@@ -481,7 +494,8 @@ ON CONFLICT (slug) DO UPDATE SET title = EXCLUDED.title, content = EXCLUDED.cont
         isDark={isDark}
       />
 
-      {isDark && (
+      {/* --- BACKGROUND CANVAS (DELAYED) --- */}
+      {isDark && mountCanvas && (
         <div className="absolute inset-0 z-0 opacity-100 pointer-events-none">
           <Suspense fallback={null}>
             <Canvas camera={{ position: [0, 0, 10], fov: 60 }}>

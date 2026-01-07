@@ -52,6 +52,8 @@ export default function ActorPage() {
                 src="https://gpjgvdpicjqrerqqzhyx.supabase.co/storage/v1/object/public/site-images/(marketing)/actor/dndl-headshot.webp"
                 alt="Daniel Lewis Headshot"
                 fill
+                // ADD THIS LINE BELOW 👇
+                sizes="(max-width: 768px) 300px, 500px"
                 className="object-cover object-top scale-105 group-hover:scale-100 transition-transform duration-700"
                 priority
               />
@@ -150,6 +152,8 @@ export default function ActorPage() {
                   src="https://gpjgvdpicjqrerqqzhyx.supabase.co/storage/v1/object/public/site-images/(marketing)/actor/dndl-website-pd.webp"
                   alt="Chicago PD Role"
                   fill
+                  // FIX: Tell the browser this image is never wider than ~320px
+                  sizes="(max-width: 768px) 288px, 320px"
                   className="object-cover grayscale group-hover:grayscale-0 transition-all duration-700"
                 />
               </div>

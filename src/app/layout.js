@@ -1,8 +1,8 @@
 import "./globals.css";
 import { Nunito_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
-import Navbar from "@/src/components/marketing/Navbar";
-import Footer from "@/src/components/marketing/Footer";
+// You imported Navbar/Footer but didn't use them here.
+// That is fine if they are used in your sub-layouts (like MarketingLayout).
 
 const nunito = Nunito_Sans({ subsets: ["latin"], variable: "--font-nunito" });
 
@@ -24,9 +24,9 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    // FIX: Added 'data-scroll-behavior="smooth"' to silence the Next.js warning
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
-        {/* 🚨 FIX: Explicit crossOrigin="anonymous" ensures the handshake works for Images */}
         <link
           rel="preconnect"
           href="https://gpjgvdpicjqrerqqzhyx.supabase.co"
