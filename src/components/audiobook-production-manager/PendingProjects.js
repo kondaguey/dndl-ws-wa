@@ -416,19 +416,19 @@ export default function PendingProjects({ onUpdate, navigateTab }) {
 
   return (
     <div className="space-y-8 pb-24 md:px-12 relative">
-      {/* Toast Notification */}
+      {/* Toast Notification - Centered Bottom */}
       <div
-        className={`fixed top-6 right-6 z-50 transition-all duration-300 transform ${
+        className={`fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] transition-all duration-300 transform ${
           toast.show
             ? "translate-y-0 opacity-100"
-            : "-translate-y-4 opacity-0 pointer-events-none"
+            : "translate-y-4 opacity-0 pointer-events-none"
         }`}
       >
         <div
-          className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border backdrop-blur-md ${
+          className={`flex items-center gap-3 px-6 py-3 rounded-full shadow-2xl border backdrop-blur-md ${
             toast.type === "error"
-              ? "bg-red-50/90 border-red-200 text-red-600"
-              : "bg-slate-900/90 border-slate-800 text-white"
+              ? "bg-red-50/95 border-red-200 text-red-600"
+              : "bg-slate-900/95 border-slate-800 text-white"
           }`}
         >
           {toast.type === "error" ? (

@@ -32,6 +32,7 @@ import {
   Timer,
   CalendarDays,
   Skull,
+  ArrowLeft,
 } from "lucide-react";
 
 const supabase = createClient(
@@ -91,8 +92,8 @@ const STATUS_MAP = {
 
 const TABS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "work_log", label: "Work Log", icon: Timer }, // FOR REAL TIME TRACKING
-  { id: "crx", label: "CRX Matrix", icon: CalendarDays }, // FOR FILE DATES
+  { id: "work_log", label: "Work Log", icon: Timer },
+  { id: "crx", label: "CRX Matrix", icon: CalendarDays },
   { id: "bible", label: "Bible", icon: BookOpen },
   { id: "tasks", label: "Checklists", icon: ListTodo },
   { id: "notes", label: "Notes", icon: StickyNote },
@@ -139,14 +140,18 @@ const Toast = ({ message, type, onClose }) => {
   }, [onClose]);
   return (
     <div
-      className={`fixed bottom-6 right-6 z-[250] flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl animate-in slide-in-from-bottom-5 border ${type === "error" ? "bg-red-50 border-red-100 text-red-600" : "bg-slate-900 border-slate-800 text-white"}`}
+      className={`fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] transition-all duration-300 transform animate-in slide-in-from-bottom-5`}
     >
-      {type === "error" ? (
-        <XCircle size={20} />
-      ) : (
-        <CheckCircle2 size={20} className="text-emerald-400" />
-      )}
-      <span className="font-bold text-sm">{message}</span>
+      <div
+        className={`flex items-center gap-3 px-6 py-3 rounded-full shadow-2xl border backdrop-blur-md ${
+          type === "error"
+            ? "bg-red-50/95 border-red-200 text-red-600"
+            : "bg-slate-900/95 border-slate-800 text-white"
+        }`}
+      >
+        {type === "error" ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
+        <span className="text-sm font-bold">{message}</span>
+      </div>
     </div>
   );
 };
@@ -193,7 +198,7 @@ const Modal = ({
 
 export default function ProductionBoard() {
   const [items, setItems] = useState([]);
-  const [logs, setLogs] = useState([]); // FROM 10_session_logs
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
@@ -210,7 +215,7 @@ export default function ProductionBoard() {
     activity: "Recording",
   });
 
-  const globalTaxRate = 25; // Constant for now
+  const globalTaxRate = 25;
 
   // --- ACTIONS ---
   const showToast = (msg, type = "success") => setToast({ message: msg, type });
@@ -218,7 +223,6 @@ export default function ProductionBoard() {
   const fetchItems = async () => {
     setLoading(true);
 
-    // 1. Get Projects
     const { data: prodData, error } = await supabase
       .from("4_production")
       .select(
@@ -232,7 +236,6 @@ export default function ProductionBoard() {
       console.error(error);
       showToast("Sync Error", "error");
     } else {
-      // 2. Get Work Logs
       const { data: logData } = await supabase
         .from("10_session_logs")
         .select("*");
@@ -240,7 +243,6 @@ export default function ProductionBoard() {
 
       const unique = (prodData || []).map((i) => ({
         ...i,
-        // Ensure defaults if JSON is null
         crx_batches: Array.isArray(i.crx_batches) ? i.crx_batches : [],
         characters: Array.isArray(i.characters) ? i.characters : [],
         checklist:
@@ -255,14 +257,7 @@ export default function ProductionBoard() {
       }));
       setItems(unique);
 
-      // Restore selection or default to first
-      if (unique.length > 0) {
-        if (selectedId && unique.find((i) => i.id === selectedId)) {
-          // Keep current
-        } else {
-          setSelectedId(unique[0].id);
-        }
-      }
+      // Restore selection logic is handled in render for mobile now
     }
     setLoading(false);
   };
@@ -278,7 +273,6 @@ export default function ProductionBoard() {
       if (item) {
         setEditForm({
           ...item,
-          // Deep Copy JSONs to avoid mutation ref issues
           characters: JSON.parse(JSON.stringify(item.characters || [])),
           crx_batches: JSON.parse(JSON.stringify(item.crx_batches || [])),
           checklist: JSON.parse(JSON.stringify(item.checklist || [])),
@@ -299,10 +293,7 @@ export default function ProductionBoard() {
     const pfhRate = parseFloat(editForm.pfh_rate) || 0;
     const pozRate = parseFloat(editForm.pozotron_rate) || 0;
 
-    // Revenue
     const gross = estFH * pfhRate;
-
-    // Expenses
     const pozotronCost = estFH * pozRate;
     const otherExpensesTotal = (editForm.other_expenses || []).reduce(
       (acc, curr) => acc + (parseFloat(curr.amount) || 0),
@@ -310,13 +301,11 @@ export default function ProductionBoard() {
     );
     const totalExpenses = pozotronCost + otherExpensesTotal;
 
-    // Net & Tax
     const net = gross - totalExpenses;
-    const taxableIncome = net * 0.8; // QBI Deduction
+    const taxableIncome = net * 0.8;
     const taxBill = taxableIncome * (globalTaxRate / 100);
     const takeHome = net - taxBill;
 
-    // Real Hours (From 10_session_logs)
     const projectLogs = logs.filter(
       (l) => l.project_id === editForm.request?.id
     );
@@ -325,7 +314,6 @@ export default function ProductionBoard() {
       0
     );
 
-    // EPH
     const actualEPH = totalHoursWorked > 0 ? takeHome / totalHoursWorked : 0;
     const effectiveTaxRate = net > 0 ? (taxBill / net) * 100 : 0;
 
@@ -408,29 +396,24 @@ export default function ProductionBoard() {
     }
   };
 
-  // --- DANGER ZONE ACTIONS ---
+  // --- ACTIONS (KICK, ARCHIVE) ---
   const executeProjectAction = async (actionType) => {
     const item = items.find((i) => i.id === selectedId);
     if (!item) return;
 
     if (actionType === "kick_back") {
-      // Determine target: Roster -> First 15, Direct -> Onboarding
       const targetStatus =
         item.request.client_type === "Roster" ? "first_15" : "onboarding";
-
-      // Update Request
       await supabase
         .from("2_booking_requests")
         .update({ status: targetStatus })
         .eq("id", item.request.id);
-      // Remove from Production
       await supabase.from("4_production").delete().eq("id", item.id);
 
       showToast(`Sent back to ${targetStatus}`);
       setItems((prev) => prev.filter((i) => i.id !== item.id));
       setSelectedId(null);
     } else if (actionType === "archive") {
-      // Archive Record
       await supabase.from("6_archive").insert([
         {
           original_data: item,
@@ -438,12 +421,10 @@ export default function ProductionBoard() {
           reason: "Booted from Prod",
         },
       ]);
-      // Update Request to 'archived'
       await supabase
         .from("2_booking_requests")
         .update({ status: "archived" })
         .eq("id", item.request.id);
-      // Delete from Production
       await supabase.from("4_production").delete().eq("id", item.id);
 
       showToast("Project Archived", "error");
@@ -495,6 +476,11 @@ export default function ProductionBoard() {
     }));
   };
 
+  const updateEditStatus = (newStatus, label) => {
+    setEditForm((prev) => ({ ...prev, status: newStatus }));
+    showToast(`Status set to ${label}. Click Save.`);
+  };
+
   if (loading)
     return (
       <div className="h-screen flex items-center justify-center bg-slate-50">
@@ -503,12 +489,14 @@ export default function ProductionBoard() {
     );
 
   return (
-    <div className="h-screen w-screen flex bg-slate-50 overflow-hidden font-sans text-slate-900">
+    <div className="flex h-screen w-full bg-slate-50 overflow-hidden font-sans text-slate-900">
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
       <Modal {...modal} />
 
-      {/* --- SIDEBAR --- */}
-      <div className="w-80 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 z-20 shadow-xl">
+      {/* --- SIDEBAR (List) --- */}
+      <div
+        className={`${selectedId ? "hidden md:flex" : "flex"} w-full md:w-80 bg-white border-r border-slate-200 flex-col flex-shrink-0 z-20 shadow-xl h-full`}
+      >
         <div className="p-5 border-b border-slate-100 bg-white/95 backdrop-blur-sm sticky top-0">
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-slate-400 mb-2">
             <span>Workspace</span>
@@ -600,8 +588,10 @@ export default function ProductionBoard() {
         </div>
       </div>
 
-      {/* --- MAIN CONTENT AREA --- */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+      {/* --- MAIN CONTENT AREA (Detail) --- */}
+      <div
+        className={`${selectedId ? "flex" : "hidden md:flex"} flex-1 flex-col h-full overflow-hidden relative bg-slate-50`}
+      >
         {!selectedId ? (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-300">
             <LayoutDashboard size={48} className="mb-4 opacity-50" />
@@ -611,9 +601,17 @@ export default function ProductionBoard() {
           </div>
         ) : (
           <>
-            <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 py-5 flex items-center justify-between sticky top-0 z-30">
-              <div className="flex items-center gap-6">
-                <div className="w-12 h-16 bg-slate-100 rounded-lg shadow-inner overflow-hidden border border-slate-200">
+            <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 md:px-8 py-5 flex items-center justify-between sticky top-0 z-30 shrink-0">
+              <div className="flex items-center gap-4 md:gap-6">
+                {/* Mobile Back Button */}
+                <button
+                  onClick={() => setSelectedId(null)}
+                  className="md:hidden p-2 -ml-2 text-slate-500"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+
+                <div className="w-10 h-14 md:w-12 md:h-16 bg-slate-100 rounded-lg shadow-inner overflow-hidden border border-slate-200 shrink-0">
                   {editForm.request?.cover_image_url ? (
                     <img
                       src={editForm.request.cover_image_url}
@@ -626,10 +624,10 @@ export default function ProductionBoard() {
                   )}
                 </div>
                 <div>
-                  <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1">
+                  <h1 className="text-lg md:text-2xl font-black text-slate-900 tracking-tight leading-none mb-1 line-clamp-1">
                     {editForm.request?.book_title}
                   </h1>
-                  <div className="flex items-center gap-3 text-xs font-bold text-slate-500 uppercase tracking-wide">
+                  <div className="flex items-center gap-3 text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wide">
                     <span className="flex items-center gap-1">
                       <User size={12} /> {editForm.request?.client_name}
                     </span>
@@ -643,14 +641,16 @@ export default function ProductionBoard() {
               </div>
               <button
                 onClick={handleSave}
-                className="px-6 py-2.5 bg-indigo-600 text-white text-xs font-bold uppercase rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                className="px-4 py-2 md:px-6 md:py-2.5 bg-indigo-600 text-white text-[10px] md:text-xs font-bold uppercase rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
               >
-                <Save size={16} /> Save Changes
+                <Save size={16} />{" "}
+                <span className="hidden md:inline">Save Changes</span>{" "}
+                <span className="md:hidden">Save</span>
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-8">
-              <div className="flex gap-1 mb-8 border-b border-slate-200 overflow-x-auto">
+            <div className="flex-1 overflow-y-auto min-h-0 p-4 md:p-8">
+              <div className="flex gap-1 mb-8 border-b border-slate-200 overflow-x-auto pb-1">
                 {TABS.map((tab) => (
                   <button
                     key={tab.id}
@@ -662,7 +662,7 @@ export default function ProductionBoard() {
                 ))}
               </div>
 
-              <div className="max-w-6xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="max-w-6xl mx-auto pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {/* === 1. OVERVIEW & FINANCIALS === */}
                 {activeTab === "overview" && financials && (
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -859,19 +859,25 @@ export default function ProductionBoard() {
                         <div className="grid grid-cols-2 gap-3">
                           <button
                             onClick={() =>
-                              setEditForm({ ...editForm, status: "pending" })
+                              updateEditStatus("pending", "Pending")
                             }
                             className="py-3 bg-amber-50 text-amber-600 rounded-xl text-xs font-bold uppercase hover:bg-amber-100"
                           >
                             Set Pending
                           </button>
                           <button
-                            onClick={() =>
-                              setEditForm({ ...editForm, status: "on_hold" })
-                            }
+                            onClick={() => updateEditStatus("on_hold", "Hold")}
                             className="py-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold uppercase hover:bg-slate-200"
                           >
                             Hold Project
+                          </button>
+                          <button
+                            onClick={() =>
+                              updateEditStatus("postponed", "Postponed")
+                            }
+                            className="py-3 bg-pink-50 text-pink-600 rounded-xl text-xs font-bold uppercase hover:bg-pink-100"
+                          >
+                            Postpone
                           </button>
                           <button
                             onClick={() => confirmAction("kick_back")}
@@ -881,9 +887,9 @@ export default function ProductionBoard() {
                           </button>
                           <button
                             onClick={() => confirmAction("archive")}
-                            className="py-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold uppercase hover:bg-red-100 flex items-center justify-center gap-2"
+                            className="col-span-2 py-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold uppercase hover:bg-red-100 flex items-center justify-center gap-2"
                           >
-                            <Archive size={14} /> Boot
+                            <Archive size={14} /> Boot (Archive)
                           </button>
                         </div>
                       </div>
