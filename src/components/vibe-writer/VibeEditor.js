@@ -1218,7 +1218,11 @@ const VibeEditor = forwardRef(
       <div
         className="flex flex-col flex-grow relative rounded-[2rem] border border-teal-500/20 shadow-[0_0_50px_-20px_rgba(20,184,166,0.2)] transition-all duration-500 vibe-editor-wrapper"
         style={{
-          backgroundColor: `rgba(5, 10, 16, ${bgOpacity / 100})`,
+          // --- UPDATED BACKGROUND LOGIC ---
+          backgroundColor:
+            theme === "light"
+              ? "rgba(255, 255, 255, 0.95)"
+              : `rgba(5, 10, 16, ${bgOpacity / 100})`,
           backdropFilter: `blur(${bgOpacity * 0.2}px)`,
           borderColor: "var(--theme-border)",
           boxShadow: "var(--theme-shadow)",
