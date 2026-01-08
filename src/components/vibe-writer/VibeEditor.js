@@ -90,7 +90,7 @@ import {
 import { saveAs } from "file-saver";
 
 // -----------------------------------------------------------------------------
-// 0. RICH TEXT PARSING LOGIC
+// 0. RICH TEXT PARSING LOGIC & EXPORT MENU
 // -----------------------------------------------------------------------------
 const parseHtmlToRichSegments = (html) => {
   if (typeof window === "undefined") return [];
@@ -149,9 +149,7 @@ const parseHtmlToRichSegments = (html) => {
   return blocks;
 };
 
-// -----------------------------------------------------------------------------
-// PDF TEMPLATE
-// -----------------------------------------------------------------------------
+// ... PDF Styles ...
 const pdfStyles = StyleSheet.create({
   page: { padding: 40, fontFamily: "Helvetica" },
   title: {
@@ -231,37 +229,6 @@ const PdfTemplate = ({ blocks, title }) => (
             </PdfText>
           ));
         const alignStyle = { textAlign: block.align };
-
-        if (block.type === "h1")
-          return (
-            <PdfText key={i} style={[pdfStyles.h1, alignStyle]}>
-              {renderRuns(block.children)}
-            </PdfText>
-          );
-        if (block.type === "h2")
-          return (
-            <PdfText key={i} style={[pdfStyles.h2, alignStyle]}>
-              {renderRuns(block.children)}
-            </PdfText>
-          );
-        if (block.type === "h3")
-          return (
-            <PdfText key={i} style={[pdfStyles.h3, alignStyle]}>
-              {renderRuns(block.children)}
-            </PdfText>
-          );
-        if (block.type === "h4")
-          return (
-            <PdfText key={i} style={[pdfStyles.h4, alignStyle]}>
-              {renderRuns(block.children)}
-            </PdfText>
-          );
-        if (block.type === "blockquote")
-          return (
-            <PdfView key={i} style={[pdfStyles.blockquote, alignStyle]}>
-              <PdfText>{renderRuns(block.children)}</PdfText>
-            </PdfView>
-          );
         if (block.type === "li") {
           return (
             <PdfView key={i} style={[pdfStyles.li, alignStyle]}>
@@ -288,9 +255,6 @@ const PdfTemplate = ({ blocks, title }) => (
   </Document>
 );
 
-// -----------------------------------------------------------------------------
-// EXPORT MENU
-// -----------------------------------------------------------------------------
 const VibeExportMenu = ({ onSqlExport, title }) => {
   const [editor] = useLexicalComposerContext();
   const [isOpen, setIsOpen] = useState(false);
@@ -420,7 +384,7 @@ const VibeExportMenu = ({ onSqlExport, title }) => {
         ) : (
           <Download size={14} />
         )}
-        Export
+        Export{" "}
         <ChevronDown
           size={12}
           className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
@@ -509,16 +473,13 @@ const vibeTheme = {
 const VibeModal = ({ isOpen, onClose, onConfirm }) => {
   const [value, setValue] = useState("");
   const inputRef = useRef(null);
-
   useEffect(() => {
     if (isOpen) {
       setValue("");
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
-
   if (!isOpen) return null;
-
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
@@ -565,7 +526,7 @@ const VibeModal = ({ isOpen, onClose, onConfirm }) => {
 };
 
 // -----------------------------------------------------------------------------
-// 3. TOOLBAR COMPONENT (Sticky + Rounded Fix)
+// 3. TOOLBAR COMPONENT
 // -----------------------------------------------------------------------------
 function VibeToolbar({ onSqlExport, title }) {
   const [editor] = useLexicalComposerContext();
@@ -663,7 +624,7 @@ function VibeToolbar({ onSqlExport, title }) {
   return (
     <>
       <div
-        className={`flex items-center flex-wrap gap-1 p-4 border-b theme-border-dim bg-[var(--bg-toolbar)] backdrop-blur-md transition-all duration-300 z-50 rounded-t-[1.9rem] ${isSticky ? "sticky top-0" : "relative"}`}
+        className={`flex items-center flex-wrap gap-1 p-4 border-b theme-border-dim bg-[var(--bg-toolbar)] backdrop-blur-md transition-all duration-300 z-50 rounded-t-[1.9rem] ${isSticky ? "sticky top-[60px] md:top-[80px]" : "relative"}`}
       >
         <button
           onMouseDown={(e) => {
@@ -902,7 +863,7 @@ const LoadHtmlPlugin = ({ initialContent }) => {
 const VibeEditor = forwardRef(
   (
     {
-      onChange,
+      onChange = () => {}, // Default no-op so it never crashes
       initialContent = null,
       theme = "teal",
       bgOpacity = 80,
@@ -926,21 +887,30 @@ const VibeEditor = forwardRef(
       editorState: null,
     };
 
-    const EditorRefPlugin = () => {
-      useImperativeHandle(ref, () => ({}));
-      return null;
-    };
+    // Use a ref to track the latest onChange handler without triggering re-renders
+    const onChangeRef = useRef(onChange);
+    useEffect(() => {
+      onChangeRef.current = onChange;
+    }, [onChange]);
 
-    const HtmlOutputPlugin = ({ onChange }) => {
+    // Internal plugin defined inside the component to ensure access to the Ref
+    const HtmlOutputPlugin = () => {
       const [editor] = useLexicalComposerContext();
       useEffect(() => {
         return editor.registerUpdateListener(({ editorState }) => {
           editorState.read(() => {
             const htmlString = $generateHtmlFromNodes(editor, null);
-            onChange(htmlString);
+            if (onChangeRef.current) {
+              onChangeRef.current(htmlString);
+            }
           });
         });
-      }, [editor, onChange]);
+      }, [editor]);
+      return null;
+    };
+
+    const EditorRefPlugin = () => {
+      useImperativeHandle(ref, () => ({}));
       return null;
     };
 
@@ -995,15 +965,17 @@ const VibeEditor = forwardRef(
           <VibeToolbar onSqlExport={onSqlExport} title={title} />
           <LoadHtmlPlugin initialContent={initialContent} />
           <EditorRefPlugin />
-          <HtmlOutputPlugin onChange={onChange} />
+          <HtmlOutputPlugin />
           <ListPlugin />
           <LinkPlugin />
           <HistoryPlugin />
           <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
-          <div className="relative p-8 md:p-12 min-h-[600px]">
+
+          {/* --- FIXED MIN-HEIGHT --- */}
+          <div className="relative p-8 md:p-12 min-h-[80vh]">
             <RichTextPlugin
               contentEditable={
-                <ContentEditable className="outline-none min-h-[500px] theme-text-body relative z-10" />
+                <ContentEditable className="outline-none min-h-[70vh] theme-text-body relative z-10" />
               }
               placeholder={
                 <div

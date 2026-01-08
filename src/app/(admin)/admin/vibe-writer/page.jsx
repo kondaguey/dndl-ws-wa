@@ -251,7 +251,6 @@ export default function MasterEditorPage() {
 
   const isReady = title.length > 2;
 
-  // ... (All existing handlers: handleClear, copyToClipboard, openStudio, handleStudioGenerate, handleManualAsset, handleAssetReorder, generateAndShowSql, handleDatabaseAction, fetchDrafts, loadDraft, toggleVisibility, handleFileUpload) ...
   const handleClear = () => {
     setPostId(null);
     setTitle("");
@@ -464,7 +463,7 @@ export default function MasterEditorPage() {
 
   return (
     <div
-      className={`font-sans min-h-screen relative`}
+      className={`font-sans min-h-screen relative overflow-x-hidden`}
       style={{
         backgroundColor: themeStyle.bg, // Fallback color
         color: isDark ? "white" : "#0f172a",
@@ -489,7 +488,7 @@ export default function MasterEditorPage() {
 
       {/* --- BACKGROUND CANVAS (Full Screen, Fixed) --- */}
       {isDark && mountCanvas && (
-        <div className="fixed inset-0 z-0 opacity-100 pointer-events-none">
+        <div className="fixed inset-0 z-0 opacity-100 pointer-events-none transition-transform duration-700">
           <Suspense fallback={null}>
             <Canvas camera={{ position: [0, 0, 10], fov: 60 }}>
               <DystopianSnow
@@ -729,7 +728,12 @@ export default function MasterEditorPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="TRANSMISSION TITLE"
-              className={`w-full p-2 text-3xl md:text-5xl font-black outline-none bg-transparent border-b-2 transition-colors duration-300 placeholder-opacity-50 ${themeStyle.title}`}
+              className={`w-full p-3 md:p-4 rounded-xl backdrop-blur-md text-xl md:text-5xl font-black outline-none border-b-2 transition-all duration-300 placeholder-opacity-50 tracking-tight md:tracking-normal ${themeStyle.title}`}
+              style={{
+                backgroundColor: isDark
+                  ? `rgba(0, 0, 0, ${bgOpacity / 100})`
+                  : `rgba(255, 255, 255, ${bgOpacity / 100})`,
+              }}
             />
             <VibeEditor
               initialContent={content}

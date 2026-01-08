@@ -20,7 +20,7 @@ const THEME_COLORS = {
 const SNOW_COLOR = { teal: "#ccfbf1", yellow: "#fef9c3", light: "#cbd5e1" };
 const RAIN_COLOR = { teal: "#a5f3fc", yellow: "#e4e4e7", light: "#60a5fa" };
 
-// --- HELPER: VIGNETTE ALPHA MAP ---
+// --- HELPER: VIGNETTE ALPHA MAP (UPDATED: SOFTER & GRADUAL) ---
 function useVignetteTexture() {
   return useMemo(() => {
     const canvas = document.createElement("canvas");
@@ -28,9 +28,14 @@ function useVignetteTexture() {
     canvas.height = 512;
     const ctx = canvas.getContext("2d");
 
-    const gradient = ctx.createRadialGradient(256, 256, 120, 256, 256, 256);
+    // Increased outer radius to 360 to push dark edges further out
+    const gradient = ctx.createRadialGradient(256, 256, 0, 256, 256, 360);
+
+    // Stays solid white (visible) for 60% of the center
     gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
-    gradient.addColorStop(0.5, "rgba(255, 255, 255, 0.8)");
+    gradient.addColorStop(0.6, "rgba(255, 255, 255, 1)");
+    // Very gradual fade out
+    gradient.addColorStop(0.85, "rgba(255, 255, 255, 0.6)");
     gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
 
     ctx.fillStyle = gradient;
@@ -40,19 +45,16 @@ function useVignetteTexture() {
   }, []);
 }
 
-// --- BACKGROUND PLANE ---
+// --- BACKGROUND PLANE (UPDATED: BIGGER & OFF-CENTER) ---
 function HallOfHumanWriting({ theme }) {
-  // 1. Get viewport AND size
   const { viewport, size } = useThree();
 
   const url = BACKDROPS[theme] || BACKDROPS.teal;
   const texture = useTexture(url);
   const alphaMap = useVignetteTexture();
 
-  // 2. Define Mobile State
   const isMobile = size.width < 768;
 
-  // 3. Calculate Scaling (This was missing!)
   const imageAspect = 16 / 9;
   const viewportAspect = viewport.width / viewport.height;
   let scaleWidth, scaleHeight;
@@ -65,16 +67,17 @@ function HallOfHumanWriting({ theme }) {
     scaleWidth = viewport.height * imageAspect;
   }
 
-  const DISTANCE_SCALE = 3.2;
+  // MASSIVE SCALE UP
+  const DISTANCE_SCALE = 4.8;
 
   return (
     <Plane
-      position={[0, 0, -40]}
+      // Shifted X to 4 to move image off-center
+      position={[4, 0, -40]}
       scale={[scaleWidth * DISTANCE_SCALE, scaleHeight * DISTANCE_SCALE, 1]}
     >
       <meshBasicMaterial
         map={texture}
-        // 4. Conditional Vignette: Null on mobile (full opacity), AlphaMap on desktop
         alphaMap={isMobile ? null : alphaMap}
         transparent={true}
         opacity={1}
@@ -85,6 +88,7 @@ function HallOfHumanWriting({ theme }) {
     </Plane>
   );
 }
+
 // --- HELPER: SOFT SNOW TEXTURE ---
 function useSnowTexture() {
   return useMemo(() => {
@@ -140,9 +144,6 @@ const SnowSystem = ({ theme, intensity, windVector }) => {
     const time = state.clock.elapsedTime;
 
     const activeThreshold = Math.floor(count * intensity);
-
-    // CONTROL: Wind (REVERSED)
-    // Multiplied by negative constant to oppose the wind vector
     const windForce = windVector * -0.04;
 
     for (let i = 0; i < count; i++) {
@@ -163,18 +164,13 @@ const SnowSystem = ({ theme, intensity, windVector }) => {
       const swayZ = data[id + 2];
       const phase = data[id + 3];
 
-      // 1. DIRECTIONAL MOVEMENT + FLUTTER
       const flutterX = Math.sin(time * 0.3 + phase) * swayX;
       p[ix] += (windForce + flutterX) * (dt * 20);
-
-      // Z-axis gentle wobble
       p[ix + 2] += Math.cos(time * 0.2 + phase) * swayZ * (dt * 20);
 
-      // 2. GRAVITY
       const velocityMod = 1 + Math.abs(windVector) * 0.1;
       p[ix + 1] -= speed * velocityMod * (dt * 15);
 
-      // 3. WRAPPING
       if (p[ix + 1] < -yBound) {
         p[ix + 1] = yBound;
         p[ix] = (Math.random() - 0.5) * xBound * 2;
@@ -229,10 +225,7 @@ const RainSystem = ({ theme, intensity, windVector }) => {
     const dt = Math.min(delta, 0.1);
 
     const activeThreshold = Math.floor(count * intensity);
-
-    // CONTROL: Wind (NORMAL)
     const windForce = windVector * 0.6;
-
     const rotationAngle = -windVector * 0.05;
     const velocityMod = 1 + Math.abs(windVector) * 0.3;
 
@@ -246,7 +239,6 @@ const RainSystem = ({ theme, intensity, windVector }) => {
         continue;
       }
 
-      // Physics
       p.y -= p.speed * velocityMod * (dt * 30);
       p.x += windForce * (dt * 30);
 
@@ -261,7 +253,6 @@ const RainSystem = ({ theme, intensity, windVector }) => {
 
       dummy.position.set(p.x, p.y, p.z);
       dummy.rotation.z = rotationAngle;
-
       dummy.scale.set(0.008, 3.0 + Math.abs(windVector) * 0.5, 1);
 
       dummy.updateMatrix();
