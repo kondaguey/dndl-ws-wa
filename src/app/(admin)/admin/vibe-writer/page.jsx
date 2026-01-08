@@ -463,9 +463,9 @@ export default function MasterEditorPage() {
 
   return (
     <div
-      className={`font-sans min-h-screen relative overflow-x-hidden`}
+      className={`font-sans min-h-screen relative overflow-x-clip`} // Changed overflow-x-hidden to overflow-x-clip
       style={{
-        backgroundColor: themeStyle.bg, // Fallback color
+        backgroundColor: themeStyle.bg,
         color: isDark ? "white" : "#0f172a",
         "--theme-color": themeStyle.hex,
       }}

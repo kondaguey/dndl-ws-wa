@@ -814,7 +814,9 @@ function VibeToolbar({ onSqlExport, title }) {
 
         <div className="ml-2 pl-2 border-l border-white/10">
           <button
-            onMouseDown={(e) => {
+            type="button" // Explicitly set type to prevent form submission/default behaviors
+            onClick={(e) => {
+              // Use onClick for UI toggles instead of onMouseDown
               e.preventDefault();
               setIsSticky(!isSticky);
             }}
