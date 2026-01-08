@@ -2,15 +2,25 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Calendar, ArrowRight, Tag, Clock, Eye } from "lucide-react";
+import { Calendar, ArrowRight, Tag, Clock } from "lucide-react";
 
-// 🚨 FIX: Added 'priority' to props so it is defined
+// --- HELPER FUNCTION (Same math as BlogPost) ---
+function calculateReadingStats(htmlContent) {
+  if (!htmlContent) return { wordCount: 0, readTime: 0 };
+  const textWithoutScripts = htmlContent.replace(
+    /<(script|style)[^>]*>[\s\S]*?<\/\1>/gi,
+    ""
+  );
+  const text = textWithoutScripts.replace(/<[^>]*>/g, " ");
+  const wordCount = text.split(/\s+/).filter((word) => word.length > 0).length;
+  const wordsPerMinute = 160;
+  const readTime = Math.ceil(wordCount / wordsPerMinute);
+  return { wordCount, readTime: readTime < 1 ? 1 : readTime };
+}
+
 export default function BlogCard({ post, delay = 0, priority = false }) {
-  const readTime = post.content
-    ? Math.ceil(post.content.split(/\s+/).length / 225)
-    : 1;
-
-  const viewCount = post.views ? post.views.toLocaleString() : "0";
+  // Use the helper to get exact stats match with the main page
+  const { wordCount, readTime } = calculateReadingStats(post.content);
 
   return (
     <div
@@ -36,7 +46,6 @@ export default function BlogCard({ post, delay = 0, priority = false }) {
                 src={post.image}
                 alt={post.title}
                 fill
-                // 🚨 FIX: Now works because 'priority' comes from props above
                 priority={priority}
                 sizes="(max-width: 768px) 90vw, (max-width: 1200px) 50vw, 33vw"
                 className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
@@ -55,6 +64,7 @@ export default function BlogCard({ post, delay = 0, priority = false }) {
             <div className="p-5 flex flex-col flex-grow bg-white border-t border-slate-100">
               {/* META ROW */}
               <div className="flex flex-wrap items-center gap-2 mb-3">
+                {/* Date */}
                 <div className="flex items-center gap-1 text-[10px] font-bold uppercase text-slate-500">
                   <Calendar size={10} className="text-indigo-500" />
                   {post.date}
@@ -62,16 +72,12 @@ export default function BlogCard({ post, delay = 0, priority = false }) {
 
                 <div className="h-2 w-[1px] bg-slate-200"></div>
 
+                {/* Word Count & Read Time (Replaces Views) */}
                 <div className="flex items-center gap-1 text-[10px] font-bold uppercase text-slate-500">
-                  <Clock size={10} className="text-pink-500" />
-                  {readTime} min
-                </div>
-
-                <div className="h-2 w-[1px] bg-slate-200"></div>
-
-                <div className="flex items-center gap-1 text-[10px] font-bold uppercase text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded-md">
-                  <Eye size={10} className="text-teal-600" />
-                  {viewCount}
+                  <Clock size={10} className="text-rose-500" />
+                  <span>
+                    {wordCount} words | ~{readTime} min
+                  </span>
                 </div>
               </div>
 

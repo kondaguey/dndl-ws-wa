@@ -12,7 +12,6 @@ import {
   Disc,
   Mic2,
   Headphones,
-  Volume2,
 } from "lucide-react";
 import parse from "html-react-parser";
 
@@ -24,7 +23,6 @@ import MusicEqualizer from "@/src/components/marketing/MusicEqualizer";
 import TechnicolorPlayer from "@/src/components/marketing/TechnicolorPlayer";
 
 // --- HELPERS ---
-
 const formatDate = (dateString) => {
   if (!dateString) return "";
   if (dateString.includes(",")) return dateString;
@@ -53,6 +51,15 @@ const getBlogcastEmbed = (url) => {
   }
   return url;
 };
+
+// --- CONSTANTS ---
+// BORDER: 80% Primary (Teal) / Secondary (Indigo) mix
+const BORDER_GRADIENT =
+  "bg-[linear-gradient(90deg,#0d9488_0%,#2dd4bf_70%,#6366f1_100%)]";
+
+// TEXT GRADIENT: MATCHING THE NAVBAR STYLE EXACTLY (Blue -> Teal -> Indigo)
+const TEXT_GRADIENT =
+  "bg-gradient-to-r from-blue-500 via-teal-400 to-indigo-500 bg-[length:200%_auto]";
 
 // --- CONTENT PARSER ---
 const contentParserOptions = {
@@ -95,14 +102,19 @@ const contentParserOptions = {
           }
           return (
             <figure className="my-12 w-full md:w-5/6 mx-auto clear-both !block group">
-              <div className="relative aspect-video rounded-3xl overflow-hidden shadow-2xl bg-black border-4 border-slate-100 dark:border-slate-800 ring-1 ring-black/5 transition-transform duration-500 hover:scale-[1.01]">
-                <iframe
-                  src={embedUrl}
-                  className="absolute inset-0 w-full h-full"
-                  allowFullScreen
-                  title="Embedded Video"
-                  loading="lazy"
-                />
+              {/* VIDEO BORDER */}
+              <div
+                className={`relative aspect-video rounded-3xl p-[2px] ${BORDER_GRADIENT} shadow-2xl transition-transform duration-500 hover:scale-[1.01]`}
+              >
+                <div className="relative w-full h-full rounded-[calc(1.5rem-2px)] overflow-hidden bg-black">
+                  <iframe
+                    src={embedUrl}
+                    className="absolute inset-0 w-full h-full"
+                    allowFullScreen
+                    title="Embedded Video"
+                    loading="lazy"
+                  />
+                </div>
               </div>
             </figure>
           );
@@ -117,27 +129,36 @@ const contentParserOptions = {
               : rawUrl.replace(".com/", ".com/embed/");
             return (
               <figure className="my-10 w-full md:w-2/3 mx-auto clear-both !block">
-                <iframe
-                  style={{ borderRadius: "16px" }}
-                  src={embedUrl}
-                  width="100%"
-                  height="152"
-                  frameBorder="0"
-                  allowFullScreen
-                  loading="lazy"
-                  className="shadow-xl"
-                />
+                {/* SPOTIFY BORDER */}
+                <div
+                  className={`rounded-[18px] p-[2px] ${BORDER_GRADIENT} shadow-xl`}
+                >
+                  <iframe
+                    style={{ borderRadius: "16px", display: "block" }}
+                    src={embedUrl}
+                    width="100%"
+                    height="152"
+                    frameBorder="0"
+                    allowFullScreen
+                    loading="lazy"
+                  />
+                </div>
               </figure>
             );
           }
-          // Fallback for in-body audio
+          // Fallback for in-body audio (Native Player)
           return (
             <figure className="my-10 w-full md:w-2/3 mx-auto clear-both !block">
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full p-3 shadow-lg">
-                <audio key={rawUrl} controls className="w-full">
-                  <source src={rawUrl} type="audio/mpeg" />
-                  <source src={rawUrl} type="audio/mp3" />
-                </audio>
+              {/* NATIVE AUDIO BORDER */}
+              <div
+                className={`${BORDER_GRADIENT} p-[2px] rounded-full shadow-lg`}
+              >
+                <div className="bg-slate-50 dark:bg-slate-900 rounded-full p-2">
+                  <audio key={rawUrl} controls className="w-full h-10 block">
+                    <source src={rawUrl} type="audio/mpeg" />
+                    <source src={rawUrl} type="audio/mp3" />
+                  </audio>
+                </div>
               </div>
             </figure>
           );
@@ -164,18 +185,21 @@ const contentParserOptions = {
           const parts = innerContent.replace("image:", "").split("|");
           let url = parts[0].trim();
 
+          // AUDIO FILE MASKED AS IMAGE
           if (url.match(/\.(mp3|wav|ogg|m4a)($|\?)/i)) {
-            // Catch edge case where audio is tagged as image
             return (
               <figure className="my-8 w-full md:w-2/3 mx-auto clear-both !block">
-                <audio
-                  key={url}
-                  controls
-                  className="w-full border border-teal-500/20 rounded-full bg-slate-100 dark:bg-slate-900"
+                {/* UPDATED: Matches exact gradient style of other cards */}
+                <div
+                  className={`${BORDER_GRADIENT} p-[2px] rounded-full shadow-lg`}
                 >
-                  <source src={url} type="audio/mpeg" />
-                  <source src={url} type="audio/mp3" />
-                </audio>
+                  <div className="bg-slate-50 dark:bg-slate-900 rounded-full p-2">
+                    <audio key={url} controls className="w-full h-10 block">
+                      <source src={url} type="audio/mpeg" />
+                      <source src={url} type="audio/mp3" />
+                    </audio>
+                  </div>
+                </div>
               </figure>
             );
           }
@@ -202,16 +226,21 @@ const contentParserOptions = {
             <figure
               className={`group relative ${alignClass} ${sizeClass} my-12`}
             >
-              <div className="rounded-3xl overflow-hidden shadow-2xl hover:shadow-[0_20px_50px_rgba(8,_112,_184,_0.1)] transition-all duration-500 leading-none w-full bg-gray-100 relative border border-slate-100">
-                <Image
-                  src={url}
-                  alt={caption || "blog image"}
-                  width={1200}
-                  height={800}
-                  sizes="(max-width: 768px) 100vw, 1200px"
-                  className="block w-full h-auto object-cover"
-                  style={{ width: "100%", height: "auto" }}
-                />
+              {/* IMAGE BORDER (In-content) */}
+              <div
+                className={`rounded-3xl p-[2px] ${BORDER_GRADIENT} shadow-2xl transition-transform duration-500 hover:scale-[1.01]`}
+              >
+                <div className="rounded-[calc(1.5rem-2px)] overflow-hidden bg-white relative">
+                  <Image
+                    src={url}
+                    alt={caption || "blog image"}
+                    width={1200}
+                    height={800}
+                    sizes="(max-width: 768px) 100vw, 1200px"
+                    className="block w-full h-auto object-cover"
+                    style={{ width: "100%", height: "auto" }}
+                  />
+                </div>
               </div>
               {caption && (
                 <figcaption className="mt-4 text-center text-xs text-slate-500 font-bold tracking-widest uppercase !w-full">
@@ -295,6 +324,10 @@ export default async function BlogPost({ params }) {
   const isIframeBlogcast = safeBlogcastUrl && !isDirectFile;
   // --- FIXED LOGIC END ---
 
+  // Custom Image URL to be updated
+  const CIRCLE_IMAGE_URL =
+    "https://gpjgvdpicjqrerqqzhyx.supabase.co/storage/v1/object/public/blog-images/no-ai-pledge-100-percent-human-written-blog-daniel-not-day-lewis.png";
+
   return (
     <div className="min-h-screen w-full relative selection:bg-teal-200 selection:text-teal-900 overflow-x-hidden">
       <ViewCounter slug={slug} />
@@ -308,36 +341,40 @@ export default async function BlogPost({ params }) {
       </div>
 
       {/* HERO SECTION */}
-      {/* 1. Reduced top padding (md:pt-10) */}
       <div className="relative z-0 pt-6 md:pt-10 pb-6 px-4 md:px-6">
         <div className="relative z-10 max-w-5xl mx-auto text-center animate-fade-in-up">
-          {/* 2. Constrained width on laptop (md:max-w-3xl) -> 30% smaller than previous 5xl */}
           <figure className="relative w-full mb-6 group md:max-w-3xl mx-auto">
-            <div className="relative w-full aspect-video rounded-3xl md:rounded-[2rem] overflow-hidden shadow-2xl shadow-indigo-900/10 border-[6px] border-white/80 backdrop-blur-md">
-              <Image
-                src={post.image}
-                alt={post.title}
-                fill
-                className="object-cover transition-transform duration-[2s] group-hover:scale-105"
-                priority
-                sizes="(max-width: 768px) 100vw, 800px"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+            {/* HERO IMAGE BORDER */}
+            <div
+              className={`relative w-full aspect-video rounded-3xl md:rounded-[2.5rem] p-[2px] ${BORDER_GRADIENT} shadow-2xl`}
+            >
+              <div className="relative w-full h-full rounded-[calc(1.5rem-2px)] md:rounded-[calc(2.5rem-2px)] overflow-hidden bg-white">
+                <Image
+                  src={post.image}
+                  alt={post.title}
+                  fill
+                  className="object-cover transition-transform duration-[2s] group-hover:scale-105"
+                  priority
+                  sizes="(max-width: 768px) 100vw, 800px"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+              </div>
             </div>
             {post.image_caption && (
-              <figcaption className="mt-4 text-center text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">
+              <figcaption className="mt-6 text-center text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">
                 {post.image_caption}
               </figcaption>
             )}
           </figure>
 
-          {/* 3. Smaller H1 (lg:text-4xl) and tighter max-width */}
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-semibold leading-[1.1] tracking-tight px-2 max-w-3xl mx-auto mb-6">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 via-indigo-600 to-purple-600 animate-gradient-x">
+          {/* HERO TITLE - UPDATED TO MATCH NAVBAR STYLE (Blue/Teal/Indigo + Animation) */}
+          <h1 className="text-balance text-2xl md:text-4xl lg:text-5xl font-black leading-[1.1] tracking-tight px-4 max-w-3xl mx-auto mb-6">
+            <span
+              className={`text-transparent bg-clip-text ${TEXT_GRADIENT} animate-[gradient-x_10s_ease_infinite] drop-shadow-sm`}
+            >
               {post.title}
             </span>
           </h1>
-
           <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 mb-12">
             <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-slate-200 shadow-sm transition-transform hover:scale-105 cursor-default">
               <Calendar size={12} className="text-teal-600" />
@@ -373,11 +410,13 @@ export default async function BlogPost({ params }) {
               hasBoth ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
             }`}
           >
-            {/* MUSIC CARD */}
+            {/* MUSIC CARD BORDER - MATCHES HERO */}
             {hasMusic && (
-              <div className="relative group rounded-[2rem] p-[3px] bg-gradient-to-br from-teal-400 via-emerald-300 to-transparent shadow-xl shadow-teal-900/5">
-                <div className="absolute inset-0 bg-white/95 rounded-[1.8rem]" />
-                <div className="relative h-full bg-white/50 backdrop-blur-xl rounded-[1.8rem] overflow-hidden p-5 md:p-6 flex flex-col">
+              <div
+                className={`relative group rounded-[2rem] p-[2px] ${BORDER_GRADIENT} shadow-xl`}
+              >
+                <div className="absolute inset-0 bg-white/95 rounded-[calc(2rem-2px)]" />
+                <div className="relative h-full bg-white/50 backdrop-blur-xl rounded-[calc(2rem-2px)] overflow-hidden p-5 md:p-6 flex flex-col">
                   <div className="flex items-start justify-between mb-5">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-xl flex items-center justify-center text-white shadow-md shadow-teal-500/20">
@@ -406,24 +445,29 @@ export default async function BlogPost({ params }) {
 
                   <p className="text-sm text-slate-600 font-medium leading-relaxed mb-5">
                     Music fuels my writing. So here's the track that fueled this
-                    one. Hit play and read along.
+                    one. Hit play (login to Spotify) and read along.
                   </p>
 
-                  <div className="mt-auto w-full rounded-xl overflow-hidden shadow-sm border border-slate-200 bg-slate-50">
-                    <div
-                      className="w-full [&>iframe]:w-full [&>iframe]:block"
-                      dangerouslySetInnerHTML={{ __html: post.music_embed }}
-                    />
+                  {/* UPDATED: Audio Player Wrapper - BORDER REMOVED */}
+                  <div className="mt-auto w-full">
+                    <div className="w-full rounded-xl overflow-hidden shadow-sm min-h-[152px] bg-slate-50 border border-slate-100">
+                      <div
+                        className="w-full [&>iframe]:w-full [&>iframe]:block"
+                        dangerouslySetInnerHTML={{ __html: post.music_embed }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* BLOGCAST CARD */}
+            {/* BLOGCAST CARD BORDER - MATCHES HERO */}
             {hasBlogcast && (
-              <div className="relative group rounded-[2rem] p-[3px] bg-gradient-to-br from-rose-400 via-orange-300 to-transparent shadow-xl shadow-rose-900/5">
-                <div className="absolute inset-0 bg-white/95 rounded-[1.8rem]" />
-                <div className="relative h-full bg-white/50 backdrop-blur-xl rounded-[1.8rem] overflow-hidden p-5 md:p-6 flex flex-col">
+              <div
+                className={`relative group rounded-[2rem] p-[2px] ${BORDER_GRADIENT} shadow-xl`}
+              >
+                <div className="absolute inset-0 bg-white/95 rounded-[calc(2rem-2px)]" />
+                <div className="relative h-full bg-white/50 backdrop-blur-xl rounded-[calc(2rem-2px)] overflow-hidden p-5 md:p-6 flex flex-col">
                   <div className="flex items-start justify-between mb-5">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-gradient-to-br from-rose-500 to-orange-500 rounded-xl flex items-center justify-center text-white shadow-md shadow-rose-500/20">
@@ -451,9 +495,10 @@ export default async function BlogPost({ params }) {
                     Think of it as a solo, personal podcast.
                   </p>
 
+                  {/* UPDATED: Audio Player Wrapper - BORDER REMOVED */}
                   <div className="mt-auto w-full">
                     {isIframeBlogcast ? (
-                      <div className="w-full rounded-xl overflow-hidden shadow-sm border border-slate-200 bg-black min-h-[152px]">
+                      <div className="w-full rounded-xl overflow-hidden shadow-sm min-h-[152px] bg-black">
                         <iframe
                           src={safeBlogcastUrl}
                           width="100%"
@@ -465,7 +510,6 @@ export default async function BlogPost({ params }) {
                         ></iframe>
                       </div>
                     ) : (
-                      /* --- TECHNICOLOR PLAYER FOR MP3/WAV/SUPABASE --- */
                       <TechnicolorPlayer url={safeBlogcastUrl} />
                     )}
                   </div>
@@ -477,7 +521,7 @@ export default async function BlogPost({ params }) {
       )}
 
       {/* ARTICLE CONTENT */}
-      <article className="max-w-4xl mx-auto px-4 md:px-6 py-4 md:py-8 animate-fade-in relative z-10">
+      <article className="max-w-3xl mx-auto px-4 md:px-6 py-4 md:py-8 animate-fade-in relative z-10">
         <div className="blog-content flow-root max-w-none mx-auto">
           {post.content ? (
             parse(post.content, contentParserOptions)
@@ -494,6 +538,24 @@ export default async function BlogPost({ params }) {
         </div>
       </article>
 
+      {/* --- CIRCLE IMAGE SECTION --- */}
+      <div className="w-full max-w-[250px] mx-auto px-4 my-8 md:my-10 relative z-10">
+        {/* CIRCLE BORDER */}
+        <div
+          className={`aspect-square rounded-full overflow-hidden shadow-2xl p-[2px] ${BORDER_GRADIENT} relative mx-auto`}
+        >
+          <div className="w-full h-full rounded-full overflow-hidden relative bg-white">
+            <Image
+              src={CIRCLE_IMAGE_URL}
+              alt="Author Circle"
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 500px"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* POPULAR POSTS */}
       <div className="w-full px-4 md:px-6 py-24 clear-both relative z-10">
         <PopularPosts currentSlug={slug} />
@@ -502,7 +564,10 @@ export default async function BlogPost({ params }) {
       {/* CTA FOOTER */}
       <div className="max-w-3xl mx-auto px-4 md:px-6 pb-24 relative z-10">
         <div className="bg-white rounded-[3rem] p-12 md:p-16 text-center shadow-2xl shadow-indigo-900/10 border border-slate-100 relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-400 via-indigo-500 to-purple-500" />
+          {/* FOOTER TOP STRIP GRADIENT */}
+          <div
+            className={`absolute top-0 left-0 w-full h-2 ${BORDER_GRADIENT}`}
+          />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-indigo-50/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
           <div className="relative z-10 flex justify-center mb-8">

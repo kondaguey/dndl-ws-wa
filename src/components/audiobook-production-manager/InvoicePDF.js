@@ -38,8 +38,23 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     color: "#0f172a",
   },
+  subtitle: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#64748b",
+    marginTop: 2,
+    textTransform: "uppercase",
+  },
+  // Dynamic header bar color based on type
   projectBar: {
     backgroundColor: "#0f172a",
+    color: "#fff",
+    padding: 12,
+    marginBottom: 20,
+    borderRadius: 4,
+  },
+  projectBarRefund: {
+    backgroundColor: "#ef4444", // Red for refunds
     color: "#fff",
     padding: 12,
     marginBottom: 20,
@@ -58,6 +73,13 @@ const styles = StyleSheet.create({
     borderColor: "#f1f5f9",
     paddingVertical: 10,
   },
+  tableRowDeduction: {
+    flexDirection: "row",
+    borderBottom: 1,
+    borderColor: "#cbd5e1",
+    paddingVertical: 10,
+    color: "#ef4444",
+  },
   totalSection: {
     marginTop: 25,
     flexDirection: "row",
@@ -70,6 +92,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   grandTotal: { fontSize: 18, fontWeight: "bold", color: "#059669" },
+  grandTotalRefund: { fontSize: 18, fontWeight: "bold", color: "#ef4444" }, // Red total for refunds
   payLink: {
     marginTop: 20,
     marginBottom: 10,
@@ -129,6 +152,35 @@ export default function InvoicePDF({ project, data, calcs }) {
 
   const logoSrc = data.logo_url || "https://placehold.co/150x150?text=LOGO";
 
+  // --- DETERMINE MODE ---
+  const isDepositInvoice = data.is_deposit === true;
+  const isRefundInvoice = data.is_refund === true; // NEW: Refund Mode
+
+  const showDepositDeduction =
+    !isDepositInvoice &&
+    !isRefundInvoice &&
+    data.deposit_status === "paid" &&
+    Number(data.deposit_amount) > 0;
+
+  // Calculate Amounts
+  let amountDue = 0;
+  let title = "INVOICE";
+  let subtitle = "";
+  let barStyle = styles.projectBar;
+
+  if (isRefundInvoice) {
+    title = "CREDIT MEMO";
+    subtitle = `REFUND ISSUED (${data.refund_percentage}%)`;
+    barStyle = styles.projectBarRefund;
+    amountDue = calcs.refundTotal; // Passed from parent
+  } else if (isDepositInvoice) {
+    title = "DEPOSIT";
+    subtitle = "UPFRONT PAYMENT";
+    amountDue = calcs.total; // The total passed is the deposit amount
+  } else {
+    amountDue = calcs.finalDue || calcs.total;
+  }
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -141,15 +193,25 @@ export default function InvoicePDF({ project, data, calcs }) {
             <Text>Cincinnati, Ohio 45244</Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
-            <Text style={styles.title}>Invoice</Text>
+            <Text
+              style={[styles.title, isRefundInvoice && { color: "#ef4444" }]}
+            >
+              {title}
+            </Text>
+            {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
             <Text style={{ marginTop: 5, fontWeight: "bold" }}>
               Ref #: {project.ref_number || "N/A"}
             </Text>
-            <Text>Date: {data.invoiced_date}</Text>
+            <Text>
+              Date:{" "}
+              {isDepositInvoice || isRefundInvoice
+                ? new Date().toLocaleDateString()
+                : data.invoiced_date}
+            </Text>
           </View>
         </View>
 
-        <View style={styles.projectBar}>
+        <View style={barStyle}>
           <Text style={{ fontSize: 12, fontWeight: "bold" }}>
             PROJECT: {project.book_title}
           </Text>
@@ -158,82 +220,142 @@ export default function InvoicePDF({ project, data, calcs }) {
         <View style={styles.tableHeader}>
           <Text style={{ flex: 3, fontWeight: "bold" }}>Description</Text>
           <Text style={{ flex: 1, textAlign: "right", fontWeight: "bold" }}>
-            Qty/Hrs
+            {isRefundInvoice ? "%" : isDepositInvoice ? "" : "Qty/Hrs"}
           </Text>
           <Text style={{ flex: 1, textAlign: "right", fontWeight: "bold" }}>
-            Rate
+            {isRefundInvoice ? "Basis" : "Rate"}
           </Text>
           <Text style={{ flex: 1, textAlign: "right", fontWeight: "bold" }}>
             Total
           </Text>
         </View>
 
-        {/* 1. Base PFH */}
-        <View style={styles.tableRow}>
-          <Text style={{ flex: 3 }}>Audiobook Production (Performance)</Text>
-          <Text style={{ flex: 1, textAlign: "right" }}>
-            {Number(data.pfh_count).toFixed(2)}
-          </Text>
-          <Text style={{ flex: 1, textAlign: "right" }}>
-            {formatCurrency(data.pfh_rate)}
-          </Text>
-          <Text style={{ flex: 1, textAlign: "right" }}>
-            {formatCurrency(calcs.base)}
-          </Text>
-        </View>
-
-        {/* 2. SAG */}
-        {Number(calcs.sag) > 0 && (
+        {/* --- REFUND MODE --- */}
+        {isRefundInvoice && (
           <View style={styles.tableRow}>
             <Text style={{ flex: 3 }}>
-              SAG-AFTRA P&H Contribution ({data.sag_ph_percent}%)
+              Refund of Deposit ({data.refund_percentage}% of Paid Amount)
             </Text>
-            <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
-            <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
             <Text style={{ flex: 1, textAlign: "right" }}>
-              {formatCurrency(calcs.sag)}
+              {data.refund_percentage}%
+            </Text>
+            <Text style={{ flex: 1, textAlign: "right" }}>
+              {formatCurrency(data.deposit_amount)}
+            </Text>
+            <Text style={{ flex: 1, textAlign: "right", color: "#ef4444" }}>
+              -{formatCurrency(amountDue)}
             </Text>
           </View>
         )}
 
-        {/* 3. Convenience Fee */}
-        {Number(data.convenience_fee) > 0 && (
+        {/* --- DEPOSIT MODE --- */}
+        {isDepositInvoice && (
           <View style={styles.tableRow}>
-            <Text style={{ flex: 3 }}>Multi-Performer / Admin Fee</Text>
+            <Text style={{ flex: 3 }}>
+              Audiobook Production Deposit (Non-Refundable)
+            </Text>
             <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
             <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
             <Text style={{ flex: 1, textAlign: "right" }}>
-              {formatCurrency(data.convenience_fee)}
+              {formatCurrency(amountDue)}
             </Text>
           </View>
         )}
 
-        {/* 4. DYNAMIC LINE ITEMS */}
-        {(data.line_items || []).map((item, index) => (
-          <View style={styles.tableRow} key={index}>
-            <Text style={{ flex: 3 }}>{item.description}</Text>
-            <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
-            <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
-            <Text style={{ flex: 1, textAlign: "right" }}>
-              {formatCurrency(item.amount)}
-            </Text>
-          </View>
-        ))}
+        {/* --- STANDARD MODE --- */}
+        {!isDepositInvoice && !isRefundInvoice && (
+          <>
+            {/* 1. Base PFH */}
+            <View style={styles.tableRow}>
+              <Text style={{ flex: 3 }}>
+                Audiobook Production (Performance)
+              </Text>
+              <Text style={{ flex: 1, textAlign: "right" }}>
+                {Number(data.pfh_count).toFixed(2)}
+              </Text>
+              <Text style={{ flex: 1, textAlign: "right" }}>
+                {formatCurrency(data.pfh_rate)}
+              </Text>
+              <Text style={{ flex: 1, textAlign: "right" }}>
+                {formatCurrency(calcs.base)}
+              </Text>
+            </View>
+
+            {/* 2. SAG */}
+            {Number(calcs.sag) > 0 && (
+              <View style={styles.tableRow}>
+                <Text style={{ flex: 3 }}>
+                  SAG-AFTRA P&H Contribution ({data.sag_ph_percent}%)
+                </Text>
+                <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
+                <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
+                <Text style={{ flex: 1, textAlign: "right" }}>
+                  {formatCurrency(calcs.sag)}
+                </Text>
+              </View>
+            )}
+
+            {/* 3. Convenience Fee */}
+            {Number(data.convenience_fee) > 0 && (
+              <View style={styles.tableRow}>
+                <Text style={{ flex: 3 }}>Multi-Performer / Admin Fee</Text>
+                <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
+                <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
+                <Text style={{ flex: 1, textAlign: "right" }}>
+                  {formatCurrency(data.convenience_fee)}
+                </Text>
+              </View>
+            )}
+
+            {/* 4. DYNAMIC LINE ITEMS */}
+            {(data.line_items || []).map((item, index) => (
+              <View style={styles.tableRow} key={index}>
+                <Text style={{ flex: 3 }}>{item.description}</Text>
+                <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
+                <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
+                <Text style={{ flex: 1, textAlign: "right" }}>
+                  {formatCurrency(item.amount)}
+                </Text>
+              </View>
+            ))}
+
+            {/* 5. DEPOSIT DEDUCTION (If Paid) */}
+            {showDepositDeduction && (
+              <View style={styles.tableRowDeduction}>
+                <Text style={{ flex: 3, fontStyle: "italic" }}>
+                  Less: Deposit Paid
+                </Text>
+                <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
+                <Text style={{ flex: 1, textAlign: "right" }}>-</Text>
+                <Text style={{ flex: 1, textAlign: "right" }}>
+                  -{formatCurrency(data.deposit_amount)}
+                </Text>
+              </View>
+            )}
+          </>
+        )}
 
         <View style={styles.totalSection}>
           <View style={styles.totalBox}>
             <View
               style={{ flexDirection: "row", justifyContent: "space-between" }}
             >
-              <Text style={{ fontWeight: "bold" }}>TOTAL DUE:</Text>
-              <Text style={styles.grandTotal}>
-                {formatCurrency(calcs.total)}
+              <Text style={{ fontWeight: "bold" }}>
+                {isRefundInvoice ? "TOTAL REFUND:" : "TOTAL DUE:"}
+              </Text>
+              <Text
+                style={
+                  isRefundInvoice ? styles.grandTotalRefund : styles.grandTotal
+                }
+              >
+                {isRefundInvoice ? "-" : ""}
+                {formatCurrency(amountDue)}
               </Text>
             </View>
           </View>
         </View>
 
-        {data.payment_link && (
+        {data.payment_link && !isRefundInvoice && (
           <View style={styles.payLink}>
             <Link
               src={sanitizeUrl(data.payment_link)}
@@ -246,25 +368,32 @@ export default function InvoicePDF({ project, data, calcs }) {
           </View>
         )}
 
-        <View style={styles.noteSection}>
-          <Text
-            style={{
-              fontSize: 8,
-              textTransform: "uppercase",
-              color: "#64748b",
-            }}
-          >
-            Notes
-          </Text>
-          <Text>Real Audio Runtime: {getRealTime(data.pfh_count)}</Text>
-          {data.custom_note && (
-            <Text style={{ marginTop: 5 }}>{data.custom_note}</Text>
-          )}
-        </View>
+        {!isDepositInvoice && !isRefundInvoice && (
+          <View style={styles.noteSection}>
+            <Text
+              style={{
+                fontSize: 8,
+                textTransform: "uppercase",
+                color: "#64748b",
+              }}
+            >
+              Notes
+            </Text>
+            <Text>Real Audio Runtime: {getRealTime(data.pfh_count)}</Text>
+            {data.custom_note && (
+              <Text style={{ marginTop: 5 }}>{data.custom_note}</Text>
+            )}
+          </View>
+        )}
 
         <View style={styles.footer}>
           <Text>
-            NET 15: Payment due by {data.due_date}. Thank you for your business.
+            {isDepositInvoice
+              ? "Deposit is required before production begins."
+              : isRefundInvoice
+                ? "This refund has been processed to your original payment method."
+                : `NET 15: Payment due by ${data.due_date || "TBD"}.`}{" "}
+            Thank you for your business.
           </Text>
         </View>
       </Page>
