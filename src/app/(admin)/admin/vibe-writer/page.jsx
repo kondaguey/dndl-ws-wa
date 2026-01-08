@@ -151,6 +151,9 @@ export default function MasterEditorPage() {
   // --- KEY FOR FORCING EDITOR RESET ---
   const [editorKey, setEditorKey] = useState(0);
 
+  // --- UNSAVED CHANGES STATE ---
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
   // --- THEME STATE ---
   const [theme, setTheme] = useState("teal");
   const isDark = theme !== "light";
@@ -168,6 +171,12 @@ export default function MasterEditorPage() {
     const timer = setTimeout(() => setMountCanvas(true), 1500);
     return () => clearTimeout(timer);
   }, []);
+
+  // --- HELPER TO WRAP SETTERS AND TRIGGER DIRTY STATE ---
+  const updateState = (setter, value) => {
+    setter(value);
+    setHasUnsavedChanges(true);
+  };
 
   const getThemeStyles = () => {
     const commonBtn =
@@ -271,6 +280,7 @@ export default function MasterEditorPage() {
 
     // Force editor to re-render clean
     setEditorKey((prev) => prev + 1);
+    setHasUnsavedChanges(false);
 
     showToast("Editor Cleared");
   };
@@ -298,6 +308,7 @@ export default function MasterEditorPage() {
   const handleManualAsset = (url, slotKey) => {
     if (!slotKey) return showToast("No slots available!", "error");
     setImages((prev) => ({ ...prev, [slotKey]: url }));
+    setHasUnsavedChanges(true);
     showToast("Media Link Added");
   };
 
@@ -319,6 +330,7 @@ export default function MasterEditorPage() {
       newImages[dropKey] = temp;
       return newImages;
     });
+    setHasUnsavedChanges(true);
   };
 
   const generateAndShowSql = () => {
@@ -364,6 +376,7 @@ export default function MasterEditorPage() {
         if (data && data[0]) setPostId(data[0].id);
       }
       setIsPublished(finalPublishedStatus);
+      setHasUnsavedChanges(false);
       showToast(finalPublishedStatus ? "Transmission LIVE!" : "Draft Saved");
     } catch (err) {
       showToast(`Error: ${err.message}`, "error");
@@ -410,6 +423,7 @@ export default function MasterEditorPage() {
 
       // Force editor to re-render with new content
       setEditorKey((prev) => prev + 1);
+      setHasUnsavedChanges(false);
 
       setShowLoadModal(false);
       showToast("Transmission Loaded");
@@ -456,6 +470,7 @@ export default function MasterEditorPage() {
         data: { publicUrl },
       } = supabase.storage.from("blog-images").getPublicUrl(filePath);
       setImages((prev) => ({ ...prev, [slotKey]: publicUrl }));
+      setHasUnsavedChanges(true);
       showToast("Asset Uploaded");
     } catch (error) {
       showToast(error.message, "error");
@@ -470,7 +485,11 @@ export default function MasterEditorPage() {
     );
   const toggleVibeMode = () =>
     setVibeMode((prev) => (prev === "glitch" ? "sexy" : "glitch"));
-  const handleLexicalChange = (htmlString) => setContent(htmlString);
+
+  const handleLexicalChange = (htmlString) => {
+    setContent(htmlString);
+    setHasUnsavedChanges(true);
+  };
 
   return (
     <div
@@ -545,6 +564,16 @@ export default function MasterEditorPage() {
           <div className="flex items-center gap-3">
             {/* DESKTOP ACTIONS */}
             <div className="hidden md:flex items-center gap-3">
+              {/* UNSAVED INDICATOR */}
+              {hasUnsavedChanges && (
+                <div className="flex items-center gap-2 mr-2 animate-pulse text-amber-500">
+                  <AlertTriangle size={14} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">
+                    Unsaved
+                  </span>
+                </div>
+              )}
+
               <button
                 onClick={() => setShowClearConfirm(true)}
                 className={themeStyle.btnGhost}
@@ -642,6 +671,14 @@ export default function MasterEditorPage() {
                   <div
                     className={`absolute top-full right-0 mt-4 min-w-[200px] p-3 rounded-2xl border shadow-2xl animate-in slide-in-from-top-5 fade-in z-50 flex flex-col gap-2 ${themeStyle.menuBg}`}
                   >
+                    {hasUnsavedChanges && (
+                      <div className="px-3 py-2 text-amber-500 flex items-center gap-2 border-b border-white/10 mb-2">
+                        <AlertTriangle size={14} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">
+                          Unsaved Changes
+                        </span>
+                      </div>
+                    )}
                     <button
                       onClick={() => {
                         handleDatabaseAction("PUBLISH");
@@ -694,19 +731,19 @@ export default function MasterEditorPage() {
           <div className="lg:col-span-4 space-y-6 lg:space-y-8 order-2 lg:order-1">
             <PopulateMeta
               date={date}
-              setDate={setDate}
+              setDate={(val) => updateState(setDate, val)}
               author={author}
-              setAuthor={setAuthor}
+              setAuthor={(val) => updateState(setAuthor, val)}
               urlPath={urlPath}
-              setUrlPath={setUrlPath}
+              setUrlPath={(val) => updateState(setUrlPath, val)}
               tag={tag}
-              setTag={setTag}
+              setTag={(val) => updateState(setTag, val)}
               imageCaption={imageCaption}
-              setImageCaption={setImageCaption}
+              setImageCaption={(val) => updateState(setImageCaption, val)}
               musicEmbed={musicEmbed}
-              setMusicEmbed={setMusicEmbed}
+              setMusicEmbed={(val) => updateState(setMusicEmbed, val)}
               blogcastUrl={blogcastUrl}
-              setBlogcastUrl={setBlogcastUrl}
+              setBlogcastUrl={(val) => updateState(setBlogcastUrl, val)}
               heroImage={images.main}
               onUpload={handleFileUpload}
               onOpenStudio={openStudio}
@@ -737,7 +774,10 @@ export default function MasterEditorPage() {
           <div className="lg:col-span-8 space-y-6 lg:space-y-8 order-1 lg:order-2">
             <input
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setHasUnsavedChanges(true);
+              }}
               placeholder="TRANSMISSION TITLE"
               className={`w-full p-3 md:p-4 rounded-xl backdrop-blur-md text-xl md:text-5xl font-black outline-none border-b-2 transition-all duration-300 placeholder-opacity-50 tracking-tight md:tracking-normal ${themeStyle.title}`}
               style={{
