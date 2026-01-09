@@ -117,14 +117,16 @@ export default function Home() {
           </header>
 
           <section className="space-y-12 w-full pt-4">
-            <div className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-slate-200/60 pb-6">
-              <div className="space-y-4">
+            {/* HEADER: Centered on mobile, Flex Row on Desktop */}
+            <div className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 border-b border-slate-200/60 pb-6">
+              {/* TITLE & BUTTONS WRAPPER: Centered text on mobile, Left on desktop */}
+              <div className="space-y-4 text-center md:text-left">
                 <h2 className="text-teal-600 font-bold text-3xl md:text-5xl font-light uppercase tracking-tight text-slate-900">
                   Insights
                 </h2>
 
-                {/* SORT PILLS */}
-                <div className="flex gap-2">
+                {/* SORT PILLS: Justify Center on mobile, Start on desktop */}
+                <div className="flex gap-2 justify-center md:justify-start">
                   {[
                     { label: "Newest", value: "newest", icon: ArrowUp },
                     { label: "Oldest", value: "oldest", icon: ArrowDown },
@@ -143,6 +145,7 @@ export default function Home() {
                   ))}
                 </div>
               </div>
+
               <Link
                 href="/blog"
                 className="hidden md:flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-slate-500 hover:text-teal-600 transition-colors group"
