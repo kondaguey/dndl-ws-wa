@@ -17,11 +17,13 @@ import {
   ArrowDown,
   ArrowDownAZ,
   GripVertical,
+  Search,
+  X,
 } from "lucide-react";
 
 const supabase = createClient();
 
-// Default Chain Data (Matched to your specs)
+// Default Chain Data
 const DEFAULT_CHAIN = [
   { tool: "Master Chain EQ", settings: "-100hz rumble" },
   {
@@ -43,6 +45,7 @@ export default function NotePad() {
   const [activeTab, setActiveTab] = useState("hotkeys");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(""); // <--- NEW SEARCH STATE
 
   // --- DATA STATES ---
   const [scratchpad, setScratchpad] = useState("");
@@ -55,6 +58,11 @@ export default function NotePad() {
     hotkeys: null,
     chain: null,
   });
+
+  // --- CLEAR SEARCH ON TAB CHANGE ---
+  useEffect(() => {
+    setSearchQuery("");
+  }, [activeTab]);
 
   // --- FETCH DATA ---
   const fetchData = useCallback(async () => {
@@ -126,8 +134,10 @@ export default function NotePad() {
     setTimeout(() => setSaving(false), 500);
   };
 
-  // Reordering Logic
   const moveItem = (index, direction, list, setList) => {
+    // Prevent moving if searching (indices won't match)
+    if (searchQuery) return;
+
     if (direction === "up" && index === 0) return;
     if (direction === "down" && index === list.length - 1) return;
 
@@ -140,7 +150,6 @@ export default function NotePad() {
     setList(newList);
   };
 
-  // Sorting Logic
   const sortList = (list, setList, key) => {
     const sorted = [...list].sort((a, b) =>
       (a[key] || "").localeCompare(b[key] || "")
@@ -148,16 +157,10 @@ export default function NotePad() {
     setList(sorted);
   };
 
-  // --- SMART HOTKEY CAPTURE ---
-  const handleKeyDown = (e, index) => {
+  const handleKeyDown = (e, index, realIndex) => {
     e.preventDefault();
     e.stopPropagation();
 
-    // Allow Tab to navigate away if needed, or prevent it to keep focus.
-    // Here we prevent to stop jumping fields while recording.
-    // if (e.key === 'Tab') return;
-
-    // Don't record if only a modifier is held down
     if (["Meta", "Control", "Alt", "Shift"].includes(e.key)) return;
 
     const modifiers = [];
@@ -166,15 +169,13 @@ export default function NotePad() {
     if (e.altKey) modifiers.push("Opt");
     if (e.shiftKey) modifiers.push("Shift");
 
-    let char = e.code; // Use physical key code (KeyA) instead of produced char (å)
+    let char = e.code;
 
-    // Clean up key codes to readable strings
     if (char.startsWith("Key")) {
       char = char.replace("Key", "");
     } else if (char.startsWith("Digit")) {
       char = char.replace("Digit", "");
     } else {
-      // Manual map for common keys
       const codeMap = {
         Space: "Space",
         ArrowUp: "Up",
@@ -216,178 +217,264 @@ export default function NotePad() {
     const shortcutString = [...modifiers, char].join(" + ");
 
     const newKeys = [...hotkeys];
-    newKeys[index].key = shortcutString;
+    // Use realIndex to update the correct item in the main array
+    newKeys[realIndex].key = shortcutString;
     setHotkeys(newKeys);
   };
+
+  // --- COMPONENT: SEARCH BAR ---
+  const SearchInput = ({ placeholder }) => (
+    <div className="relative mb-3 shrink-0">
+      <Search
+        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+        size={14}
+      />
+      <input
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-8 py-2 text-xs font-medium text-slate-300 focus:border-indigo-500 outline-none placeholder:text-slate-600 transition-all"
+      />
+      {searchQuery && (
+        <button
+          onClick={() => setSearchQuery("")}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+        >
+          <X size={12} />
+        </button>
+      )}
+    </div>
+  );
 
   // --- TAB CONTENT RENDERERS ---
 
   // 1. HOTKEYS TAB
-  const renderHotkeys = () => (
-    <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center mb-4 shrink-0">
-        <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
-          <Command size={12} /> Audacity Shortcuts
-        </h3>
-        <div className="flex gap-2">
-          <button
-            onClick={() => sortList(hotkeys, setHotkeys, "action")}
-            className="text-[10px] font-bold bg-slate-800 text-slate-400 px-3 py-1.5 rounded hover:bg-slate-700 transition-colors flex items-center gap-1"
-            title="Sort Alphabetically"
-          >
-            <ArrowDownAZ size={12} />
-          </button>
-          <button
-            onClick={() => setHotkeys([...hotkeys, { action: "", key: "" }])}
-            className="text-[10px] font-bold bg-indigo-500/10 text-indigo-400 px-3 py-1.5 rounded hover:bg-indigo-500/20 transition-colors flex items-center gap-1"
-          >
-            <Plus size={12} /> Add
-          </button>
-        </div>
-      </div>
-      <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar space-y-2">
-        {hotkeys.map((item, idx) => (
-          <div key={idx} className="flex gap-2 group items-center">
-            <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity">
-              <button
-                onClick={() => moveItem(idx, "up", hotkeys, setHotkeys)}
-                disabled={idx === 0}
-                className="hover:text-white disabled:opacity-20"
-              >
-                <ArrowUp size={10} />
-              </button>
-              <button
-                onClick={() => moveItem(idx, "down", hotkeys, setHotkeys)}
-                disabled={idx === hotkeys.length - 1}
-                className="hover:text-white disabled:opacity-20"
-              >
-                <ArrowDown size={10} />
-              </button>
-            </div>
-            <input
-              className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-3 text-xs font-bold text-slate-300 focus:border-indigo-500 outline-none transition-colors placeholder:text-slate-600 placeholder:font-normal"
-              placeholder="Action name..."
-              value={item.action}
-              onChange={(e) => {
-                const newKeys = [...hotkeys];
-                newKeys[idx].action = e.target.value;
-                setHotkeys(newKeys);
-              }}
-            />
-            <input
-              className="w-48 bg-slate-950 border border-slate-700 rounded-lg px-3 py-3 text-xs font-black text-indigo-300 text-center font-mono focus:border-indigo-500 focus:text-white outline-none transition-colors cursor-pointer"
-              placeholder="Press Keys..."
-              value={item.key}
-              onKeyDown={(e) => handleKeyDown(e, idx)}
-              readOnly
-            />
+  const renderHotkeys = () => {
+    // Filter logic
+    const filteredHotkeys = hotkeys
+      .map((item, index) => ({ ...item, originalIndex: index }))
+      .filter(
+        (item) =>
+          item.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.key.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex justify-between items-center mb-3 shrink-0">
+          <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
+            <Command size={12} /> Audacity Shortcuts
+          </h3>
+          <div className="flex gap-2">
+            <button
+              onClick={() => sortList(hotkeys, setHotkeys, "action")}
+              className="text-[10px] font-bold bg-slate-800 text-slate-400 px-3 py-1.5 rounded hover:bg-slate-700 transition-colors flex items-center gap-1"
+              title="Sort Alphabetically"
+            >
+              <ArrowDownAZ size={12} />
+            </button>
             <button
               onClick={() => {
-                const newKeys = hotkeys.filter((_, i) => i !== idx);
-                setHotkeys(newKeys);
+                setHotkeys([...hotkeys, { action: "", key: "" }]);
+                setSearchQuery(""); // Clear search to see new item
               }}
-              className="p-2 text-slate-600 hover:text-red-400 hover:bg-red-900/10 rounded transition-all opacity-50 group-hover:opacity-100"
+              className="text-[10px] font-bold bg-indigo-500/10 text-indigo-400 px-3 py-1.5 rounded hover:bg-indigo-500/20 transition-colors flex items-center gap-1"
             >
-              <Trash2 size={14} />
+              <Plus size={12} /> Add
             </button>
           </div>
-        ))}
-        {hotkeys.length === 0 && (
-          <div className="text-center py-10 text-slate-600 text-xs italic">
-            No shortcuts saved yet.
-          </div>
-        )}
+        </div>
+
+        <SearchInput placeholder="Search keys or actions..." />
+
+        <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar space-y-2">
+          {filteredHotkeys.map((item, idx) => {
+            const realIndex = item.originalIndex;
+            return (
+              <div key={realIndex} className="flex gap-2 group items-center">
+                {/* Drag buttons disabled during search to prevent index mismatch */}
+                <div
+                  className={`flex flex-col gap-0.5 transition-opacity ${
+                    searchQuery
+                      ? "opacity-10 cursor-not-allowed"
+                      : "opacity-0 group-hover:opacity-50 hover:!opacity-100"
+                  }`}
+                >
+                  <button
+                    onClick={() =>
+                      moveItem(realIndex, "up", hotkeys, setHotkeys)
+                    }
+                    disabled={realIndex === 0 || !!searchQuery}
+                    className="hover:text-white disabled:opacity-20"
+                  >
+                    <ArrowUp size={10} />
+                  </button>
+                  <button
+                    onClick={() =>
+                      moveItem(realIndex, "down", hotkeys, setHotkeys)
+                    }
+                    disabled={realIndex === hotkeys.length - 1 || !!searchQuery}
+                    className="hover:text-white disabled:opacity-20"
+                  >
+                    <ArrowDown size={10} />
+                  </button>
+                </div>
+                <input
+                  className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-3 text-xs font-bold text-slate-300 focus:border-indigo-500 outline-none transition-colors placeholder:text-slate-600 placeholder:font-normal"
+                  placeholder="Action name..."
+                  value={item.action}
+                  onChange={(e) => {
+                    const newKeys = [...hotkeys];
+                    newKeys[realIndex].action = e.target.value;
+                    setHotkeys(newKeys);
+                  }}
+                />
+                <input
+                  className="w-48 bg-slate-950 border border-slate-700 rounded-lg px-3 py-3 text-xs font-black text-indigo-300 text-center font-mono focus:border-indigo-500 focus:text-white outline-none transition-colors cursor-pointer"
+                  placeholder="Press Keys..."
+                  value={item.key}
+                  onKeyDown={(e) => handleKeyDown(e, idx, realIndex)}
+                  readOnly
+                />
+                <button
+                  onClick={() => {
+                    const newKeys = hotkeys.filter((_, i) => i !== realIndex);
+                    setHotkeys(newKeys);
+                  }}
+                  className="p-2 text-slate-600 hover:text-red-400 hover:bg-red-900/10 rounded transition-all opacity-50 group-hover:opacity-100"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })}
+          {filteredHotkeys.length === 0 && (
+            <div className="text-center py-10 text-slate-600 text-xs italic">
+              {searchQuery ? "No matches found." : "No shortcuts saved yet."}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // 2. CHAIN SETTINGS TAB
-  const renderChain = () => (
-    <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center mb-4 shrink-0 p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
-        <div className="flex items-center gap-2">
-          <Zap size={14} className="text-green-500" />
-          <span className="text-[10px] font-black uppercase text-green-200 tracking-wider">
-            RX Master Chain
-          </span>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => sortList(chain, setChain, "tool")}
-            className="text-[10px] font-bold bg-green-900/40 text-green-400 px-2 py-1 rounded hover:bg-green-900/60 transition-colors"
-            title="Sort Alphabetically"
-          >
-            <ArrowDownAZ size={14} />
-          </button>
-          <button
-            onClick={() => setChain([...chain, { tool: "", settings: "" }])}
-            className="text-[10px] font-bold bg-green-500/20 text-green-400 px-2 py-1 rounded hover:bg-green-500/30 transition-colors flex items-center gap-1"
-          >
-            <Plus size={12} /> Add Step
-          </button>
-        </div>
-      </div>
+  const renderChain = () => {
+    // Filter logic
+    const filteredChain = chain
+      .map((item, index) => ({ ...item, originalIndex: index }))
+      .filter(
+        (item) =>
+          item.tool.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.settings.toLowerCase().includes(searchQuery.toLowerCase())
+      );
 
-      <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar space-y-2">
-        {chain.map((item, idx) => (
-          <div
-            key={idx}
-            className="flex gap-2 group items-start bg-slate-900/50 p-3 rounded-xl border border-transparent hover:border-slate-700 transition-all"
-          >
-            <div className="flex flex-col gap-1 pt-1 opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity text-slate-500">
-              <button
-                onClick={() => moveItem(idx, "up", chain, setChain)}
-                disabled={idx === 0}
-                className="hover:text-white disabled:opacity-20"
-              >
-                <ArrowUp size={12} />
-              </button>
-              <button
-                onClick={() => moveItem(idx, "down", chain, setChain)}
-                disabled={idx === chain.length - 1}
-                className="hover:text-white disabled:opacity-20"
-              >
-                <ArrowDown size={12} />
-              </button>
-            </div>
-
-            <div className="flex-grow space-y-1">
-              <input
-                className="w-full bg-transparent border-none p-0 text-xs font-black text-green-400 focus:text-white outline-none placeholder:text-slate-600"
-                placeholder="Tool Name (e.g. De-Ess)"
-                value={item.tool}
-                onChange={(e) => {
-                  const newChain = [...chain];
-                  newChain[idx].tool = e.target.value;
-                  setChain(newChain);
-                }}
-              />
-              <input
-                className="w-full bg-transparent border-none p-0 text-[11px] font-mono text-slate-400 focus:text-slate-200 outline-none placeholder:text-slate-700"
-                placeholder="Settings parameters..."
-                value={item.settings}
-                onChange={(e) => {
-                  const newChain = [...chain];
-                  newChain[idx].settings = e.target.value;
-                  setChain(newChain);
-                }}
-              />
-            </div>
-
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex justify-between items-center mb-3 shrink-0 p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
+          <div className="flex items-center gap-2">
+            <Zap size={14} className="text-green-500" />
+            <span className="text-[10px] font-black uppercase text-green-200 tracking-wider">
+              RX Master Chain
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => sortList(chain, setChain, "tool")}
+              className="text-[10px] font-bold bg-green-900/40 text-green-400 px-2 py-1 rounded hover:bg-green-900/60 transition-colors"
+              title="Sort Alphabetically"
+            >
+              <ArrowDownAZ size={14} />
+            </button>
             <button
               onClick={() => {
-                const newChain = chain.filter((_, i) => i !== idx);
-                setChain(newChain);
+                setChain([...chain, { tool: "", settings: "" }]);
+                setSearchQuery("");
               }}
-              className="p-1 text-slate-600 hover:text-red-400 hover:bg-red-900/10 rounded transition-all opacity-0 group-hover:opacity-100"
+              className="text-[10px] font-bold bg-green-500/20 text-green-400 px-2 py-1 rounded hover:bg-green-500/30 transition-colors flex items-center gap-1"
             >
-              <Trash2 size={14} />
+              <Plus size={12} /> Add Step
             </button>
           </div>
-        ))}
+        </div>
+
+        <SearchInput placeholder="Search chain tools..." />
+
+        <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar space-y-2">
+          {filteredChain.map((item, idx) => {
+            const realIndex = item.originalIndex;
+            return (
+              <div
+                key={realIndex}
+                className="flex gap-2 group items-start bg-slate-900/50 p-3 rounded-xl border border-transparent hover:border-slate-700 transition-all"
+              >
+                <div
+                  className={`flex flex-col gap-1 pt-1 transition-opacity text-slate-500 ${
+                    searchQuery
+                      ? "opacity-10 cursor-not-allowed"
+                      : "opacity-0 group-hover:opacity-50 hover:!opacity-100"
+                  }`}
+                >
+                  <button
+                    onClick={() => moveItem(realIndex, "up", chain, setChain)}
+                    disabled={realIndex === 0 || !!searchQuery}
+                    className="hover:text-white disabled:opacity-20"
+                  >
+                    <ArrowUp size={12} />
+                  </button>
+                  <button
+                    onClick={() => moveItem(realIndex, "down", chain, setChain)}
+                    disabled={realIndex === chain.length - 1 || !!searchQuery}
+                    className="hover:text-white disabled:opacity-20"
+                  >
+                    <ArrowDown size={12} />
+                  </button>
+                </div>
+
+                <div className="flex-grow space-y-1">
+                  <input
+                    className="w-full bg-transparent border-none p-0 text-xs font-black text-green-400 focus:text-white outline-none placeholder:text-slate-600"
+                    placeholder="Tool Name (e.g. De-Ess)"
+                    value={item.tool}
+                    onChange={(e) => {
+                      const newChain = [...chain];
+                      newChain[realIndex].tool = e.target.value;
+                      setChain(newChain);
+                    }}
+                  />
+                  <input
+                    className="w-full bg-transparent border-none p-0 text-[11px] font-mono text-slate-400 focus:text-slate-200 outline-none placeholder:text-slate-700"
+                    placeholder="Settings parameters..."
+                    value={item.settings}
+                    onChange={(e) => {
+                      const newChain = [...chain];
+                      newChain[realIndex].settings = e.target.value;
+                      setChain(newChain);
+                    }}
+                  />
+                </div>
+
+                <button
+                  onClick={() => {
+                    const newChain = chain.filter((_, i) => i !== realIndex);
+                    setChain(newChain);
+                  }}
+                  className="p-1 text-slate-600 hover:text-red-400 hover:bg-red-900/10 rounded transition-all opacity-0 group-hover:opacity-100"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })}
+          {filteredChain.length === 0 && (
+            <div className="text-center py-10 text-slate-600 text-xs italic">
+              {searchQuery ? "No matches found." : "Chain is empty."}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // 3. SCRATCHPAD TAB
   const renderScratchpad = () => (
