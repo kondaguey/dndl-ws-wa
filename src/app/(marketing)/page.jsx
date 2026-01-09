@@ -90,10 +90,10 @@ export default function Home() {
           {/* HERO */}
           <header className="relative flex flex-col justify-center items-center min-h-[70vh] pb-24 w-full max-w-4xl mx-auto space-y-8 animate-fade-in text-center">
             <h1 className="text-3xl md:text-5xl font-black leading-[0.95] tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-slate-200 via-teal-700 to-slate-700 pb-2 font-normal">
-              Artist by nature. <br /> Entrepreneur by nurture.
+              Artist by nature, <br /> Entrepreneur by nurture...
             </h1>
             <p className="text-sm md:text-2xl text-slate-500 max-w-2xl mx-auto font-light leading-relaxed">
-              Becoming lucid in this{" "}
+              becoming lucid in this{" "}
               <WavyLink href="/blog" text="liminal dreamworld" />.
             </p>
             <div className="flex flex-wrap justify-center gap-6 pt-8">
