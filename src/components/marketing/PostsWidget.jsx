@@ -112,6 +112,7 @@ export default function PostsWidget({ currentSlug }) {
             post={post}
             delay={index * 0.1}
             isNew={isPostNew(post.date)}
+            priority={index === 0} // <--- FIX IS HERE
           />
         ))}
       </div>

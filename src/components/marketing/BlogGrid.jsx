@@ -76,7 +76,8 @@ export default function BlogGrid({ initialPosts }) {
             post={post}
             delay={index * 0.05}
             isNew={isPostNew(post.date)}
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            priority={index === 0} // <--- FIX 1: Prioritize the first image
+            sizes="(max-width: 640px) 90vw, (max-width: 1024px) 50vw, 25vw" // <--- FIX 2: Optimized sizing
           />
         ))}
         {!sortedPosts.length && (

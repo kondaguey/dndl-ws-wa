@@ -49,11 +49,11 @@
     "three": "^0.181.2"
   },
   "browserslist": [
-    "chrome >= 80",
-    "firefox >= 78",
-    "safari >= 14",
-    "edge >= 80",
-    "ios >= 14",
+    "chrome >= 95",
+    "firefox >= 90",
+    "edge >= 95",
+    "safari >= 15.6",
+    "ios >= 15.6",
     "not dead"
   ],
   "devDependencies": {
