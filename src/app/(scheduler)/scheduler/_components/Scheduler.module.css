@@ -1,0 +1,36 @@
+@reference "#globals";
+
+/* --- INPUTS --- */
+.inputLabel {
+  display: block;
+  @apply font-black text-[0.7rem] uppercase tracking-[0.15em] mb-2;
+  @apply text-slate-400;
+}
+
+.inputField {
+  width: 100%;
+  background: transparent;
+  @apply border-b-2 border-slate-300;
+  padding: 0.75rem 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  outline: none;
+  transition: all 0.3s;
+}
+
+.inputField:focus {
+  @apply border-primary border-b-[3px];
+}
+
+.inputField::placeholder {
+  @apply text-slate-300 font-medium;
+}
+
+.checkboxWrapper {
+  @apply w-6 h-6 border-2 border-slate-300 rounded-lg flex items-center justify-center transition-colors bg-white;
+}
+
+.checkboxWrapper:hover {
+  @apply border-primary;
+}

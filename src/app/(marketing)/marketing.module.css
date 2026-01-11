@@ -1,0 +1,49 @@
+/* src/app/(marketing)/marketing.module.css */
+
+/* THE CONTAINER */
+.wavyLink {
+  display: inline-block;
+  white-space: nowrap;
+  cursor: pointer;
+  position: relative;
+  z-index: 10;
+  font-weight: 500;
+}
+
+/* THE INDIVIDUAL LETTERS */
+.waveChar {
+  display: inline-block;
+  /* 1. PHYSICS: The Caterpillar Bounce */
+  /* 2. PAINT: The Technicolor Cycle */
+  animation:
+    caterpillar 2s ease-in-out infinite,
+    technicolor 6s linear infinite;
+}
+
+/* --- SCOPED KEYFRAMES --- */
+
+@keyframes caterpillar {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes technicolor {
+  /* Using your Global Variables */
+  0% {
+    color: var(--color-brand-start);
+  }
+  33% {
+    color: var(--color-brand-mid);
+  }
+  66% {
+    color: var(--color-brand-end);
+  }
+  100% {
+    color: var(--color-brand-start);
+  }
+}

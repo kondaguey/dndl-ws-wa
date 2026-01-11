@@ -5,16 +5,21 @@ import { useState } from "react";
 import { ArrowRight, ArrowUp, ArrowDown, Trophy } from "lucide-react";
 import BlogCard from "@/src/app/(marketing)/_components/BlogCard";
 
+// ✅ 1. IMPORT YOUR CSS MODULE
+import styles from "../marketing.module.css";
+
 const WavyLink = ({ href, text }) => {
   return (
     <Link
       href={href}
-      className="wavy-link inline-block whitespace-nowrap cursor-pointer relative z-10"
+      // ✅ 2. USE THE MODULE CLASS (Object, not string)
+      className={styles.wavyLink}
     >
       {text.split("").map((char, index) => (
         <span
           key={index}
-          className="wave-char"
+          // ✅ 3. USE THE MODULE CLASS (Object, not string)
+          className={styles.waveChar}
           style={{
             animationDelay: `${index * 0.15}s`,
             marginRight: char === " " ? "0.3em" : "0",
@@ -79,7 +84,7 @@ export default function HomeUI({ initialPosts }) {
               Artist by nature, <br /> Entrepreneur by nurture
             </h1>
             <p className="text-sm md:text-2xl text-slate-500 max-w-2xl mx-auto font-light leading-relaxed">
-              becoming lucid in this{" "}
+              becoming lucid in this {/* ✅ 4. COMPONENT USED HERE */}
               <WavyLink href="/blog" text="liminal dreamworld" />.
             </p>
             <div className="flex flex-wrap justify-center gap-6 pt-8">

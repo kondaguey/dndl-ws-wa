@@ -1,21 +1,36 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   1. THEME CONFIGURATION (Tailwind 4)
+   1. ABSTRACTS (Configuration & Variables)
+   The "Constitution" - Colors, Fonts, Keyframes
    ========================================================================== */
 @theme {
-  --color-primary: #0d9488;
-  --color-primary-light: #5eead4;
-  --color-primary-dark: #115e59;
-  --color-secondary: #d4a373;
+  /* --- BRAND PALETTE --- */
+  --color-primary: #0d9488; /* Teal 600 */
+  --color-primary-light: #5eead4; /* Teal 300 */
+  --color-primary-dark: #115e59; /* Teal 800 */
+  --color-secondary: #d4a373; /* Tan/Gold */
 
+  /* --- BRAND GRADIENT (The Aurora) --- */
+  --color-brand-start: #14b8a6; /* Teal 500 */
+  --color-brand-mid: #6366f1; /* Indigo 500 */
+  --color-brand-end: #a855f7; /* Purple 500 */
+
+  /* --- ANIMATION UTILITIES --- */
   --animate-fade-in: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-slide-up: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-gradient-xy: gradient-xy 3s ease infinite;
+
+  /* ✅ THE NAVBAR PHYSICS (10s Flow) */
   --animate-gradient-x: gradient-x 10s ease infinite;
+
   --animate-ticker: ticker 30s linear infinite;
   --animate-glitch: glitch 4000ms infinite;
 
+  /* (Optional: You can delete 'wave' here if you never want to see it again) */
+  --animate-wave: wave 2.5s ease-in-out infinite;
+
+  /* --- KEYFRAMES --- */
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -82,38 +97,39 @@
         -0.025em -0.025em 0 rgba(0, 255, 225, 0.8);
     }
   }
+  @keyframes wave {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    25% {
+      transform: translateY(-4px) rotate(-2deg);
+    }
+    75% {
+      transform: translateY(2px) rotate(2deg);
+    }
+  }
 }
 
 /* ==========================================================================
-   2. CSS VARIABLES & DARK MODE
+   2. THEMES (Dark Mode)
    ========================================================================== */
 .dark {
-  --theme-rgb: 45, 212, 191;
-  --theme-hex: #2dd4bf;
-  --toolbar-text: var(--theme-hex);
-  --picker-bg: #000;
   --color-bg: #0f172a;
   --color-surface: #1e293b;
   --color-text-main: #f3f4f6;
 }
 
 /* ==========================================================================
-   3. GLOBAL BASE STYLES
+   3. BASE (Resets)
    ========================================================================== */
 @layer base {
   :root {
-    --theme-rgb: 45, 212, 191;
-    --theme-hex: #2dd4bf;
-    --toolbar-text: #475569;
-    --picker-bg: #fff;
-    --color-primary: #0d9488;
-    --color-primary-light: #5eead4;
-    --color-primary-dark: #115e59;
+    --nav-height: 80px;
+    --radius-lg: 1.5rem;
     --color-bg: #e2e8f0;
     --color-surface: #f8fafc;
     --color-text-main: #1f2937;
-    --nav-height: 80px;
-    --radius-lg: 1.5rem;
   }
   html {
     scroll-behavior: smooth;
@@ -145,42 +161,9 @@
 }
 
 /* ==========================================================================
-   4. COMPONENTS
+   4. LAYOUT & CONTAINERS
    ========================================================================== */
 @layer components {
-  /* --- UI UTILITIES --- */
-  .animate-gradient-x {
-    background-size: 100% 100%;
-    animation: none;
-  }
-  .animate-ticker {
-    animation: var(--animate-ticker);
-  }
-  .glitch-title {
-    position: relative;
-    animation: none;
-  }
-  .glow-heading {
-    @apply text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-teal-400 to-indigo-500;
-    @apply tracking-tight font-black uppercase;
-    background-size: 100% 100%;
-    filter: drop-shadow(0 0 2px rgba(20, 184, 166, 0.2));
-  }
-  @media (min-width: 768px) {
-    .animate-gradient-x {
-      background-size: 200% 200%;
-      animation: var(--animate-gradient-x);
-    }
-    .glitch-title {
-      animation: var(--animate-glitch);
-    }
-    .glow-heading {
-      background-size: 200% 200%;
-      animation: var(--animate-gradient-xy);
-      filter: drop-shadow(0 0 8px rgba(20, 184, 166, 0.35))
-        drop-shadow(0 0 20px rgba(129, 140, 248, 0.2));
-    }
-  }
   .glass-panel {
     @apply backdrop-blur-xl border border-white/10 shadow-xl;
     background: rgba(255, 255, 255, 0.6);
@@ -189,36 +172,72 @@
     background: rgba(23, 23, 23, 0.6);
     @apply border-white/5;
   }
+}
 
-  /* ========================================================================
-     HERO SECTION STYLING (Title & Captions)
-     ======================================================================== */
+/* ==========================================================================
+   5. TYPOGRAPHY SYSTEM
+   ========================================================================== */
+@layer components {
+  /* H1: The Signature "Wave" Title (Renamed Logic, kept Name) */
+  .h1-wave {
+    display: inline-block;
+    @apply text-4xl md:text-6xl font-black uppercase tracking-tight leading-none mb-4;
 
-  /* 1. The Main Blog Title */
+    /* 1. PAINT: Brand Gradient + Extra Width for Flow */
+    @apply text-transparent bg-clip-text;
+    @apply bg-gradient-to-r from-brand-start via-brand-mid to-brand-end;
+    @apply bg-[length:200%_auto];
+
+    /* 2. PHYSICS: The 10s Navbar Flow (NO MORE BOUNCE) */
+    @apply animate-gradient-x;
+
+    @apply drop-shadow-sm;
+  }
+
+  /* H2: Core Section Header */
+  .h2-core {
+    @apply text-2xl md:text-4xl font-black uppercase text-slate-900 tracking-tight mb-4;
+  }
+
+  /* H3: Accent Subhead */
+  .h3-accent {
+    @apply text-xl md:text-2xl font-bold text-primary tracking-wide mb-3;
+  }
+
+  /* H4: Label */
+  .h4-label {
+    @apply text-xs md:text-sm font-black text-slate-400 uppercase tracking-[0.2em] mb-2;
+  }
+
+  /* P: Body Text */
+  .body-text {
+    @apply text-base md:text-lg text-slate-600 leading-relaxed font-medium;
+  }
+
+  /* Hero Typography */
   .hero-title {
     @apply text-balance font-semibold leading-[1.05] tracking-tight px-4 max-w-5xl mx-auto;
-    /* Increased Sizes: 4xl mobile, 6xl tablet, 7xl desktop */
     @apply text-3xl md:text-4xl lg:text-5xl;
-    /* Spacing: Space below title */
     @apply mb-6 md:mb-10;
   }
 
-  /* 2. The Animated Gradient inside the Title */
   .hero-text-gradient {
-    @apply text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-teal-400 to-indigo-500;
-    @apply bg-[length:200%_auto] animate-[gradient-x_10s_ease_infinite] drop-shadow-sm;
+    @apply text-transparent bg-clip-text;
+    @apply bg-gradient-to-r from-brand-start via-brand-mid to-brand-end;
+    @apply bg-[length:200%_auto] animate-gradient-x drop-shadow-sm;
   }
 
-  /* 3. The Hero Image Caption */
   .hero-caption {
     @apply block text-center text-xs font-bold text-slate-400 uppercase tracking-[0.2em];
-    /* Spacing: Adds gap between the image caption and the Title */
     @apply mt-6 mb-8;
   }
+}
 
-  /* ========================================================================
-   🔥 SUPERCHARGED BLOG CONTENT STYLING (SEMANTIC HTML TARGETS)
-   ======================================================================== */
+/* ==========================================================================
+   6. COMPONENT MODULES (Blog & Mail)
+   ========================================================================== */
+@layer components {
+  /* BLOG */
   .blog-content {
     @apply text-slate-700 mx-auto;
     font-size: 1.125rem;
@@ -230,15 +249,11 @@
       font-size: 1.25rem;
     }
   }
-
-  /* RESET SPANS */
   .blog-content span {
     white-space: normal !important;
     font-family: inherit !important;
     font-weight: inherit !important;
   }
-
-  /* CONTENT HEADINGS (H1 inside content is rare, but defined just in case) */
   .blog-content h1 {
     @apply font-black tracking-tight text-slate-900 mt-12 mb-6 text-4xl md:text-5xl;
     line-height: 1.1;
@@ -252,7 +267,7 @@
     color: transparent;
   }
   .blog-content h3 {
-    @apply font-normal text-teal-700 mt-10 mb-4 text-2xl md:text-3xl;
+    @apply font-normal text-primary-dark mt-10 mb-4 text-2xl md:text-3xl;
   }
   .blog-content h4 {
     @apply text-lg md:text-xl font-normal text-slate-800 uppercase tracking-widest mt-8 mb-3;
@@ -260,44 +275,34 @@
     padding-bottom: 0.25rem;
     display: inline-block;
   }
-
-  /* PARAGRAPHS */
   .blog-content p {
     margin-bottom: 2rem;
     color: #334155;
   }
-
-  /* LINKS */
   .blog-content a {
-    @apply text-teal-600 font-bold underline decoration-2 underline-offset-4 decoration-teal-300 transition-colors;
+    @apply text-primary font-bold underline decoration-2 underline-offset-4 decoration-primary-light transition-colors;
   }
   .blog-content a:hover {
-    @apply text-teal-800 decoration-teal-500;
+    @apply text-primary-dark decoration-brand-start;
   }
-
-  /* LISTS */
   .blog-content ul {
-    @apply list-disc list-outside ml-6 mb-8 marker:text-teal-500;
+    @apply list-disc list-outside ml-6 mb-8 marker:text-brand-start;
   }
   .blog-content ol {
-    @apply list-decimal list-outside ml-6 mb-8 marker:text-teal-500 font-bold;
+    @apply list-decimal list-outside ml-6 mb-8 marker:text-brand-start font-bold;
   }
   .blog-content li {
     @apply mb-2 pl-2 text-slate-700 font-medium;
   }
-
-  /* BLOCKQUOTES */
   .blog-content blockquote {
-    @apply relative border-l-4 border-teal-500 pl-6 py-2 my-10 italic text-slate-600 bg-slate-50 rounded-r-lg shadow-sm;
+    @apply relative border-l-4 border-brand-start pl-6 py-2 my-10 italic text-slate-600 bg-slate-50 rounded-r-lg shadow-sm;
     font-size: 1.25rem;
   }
-
-  /* IMAGES */
   .blog-content > img {
     @apply rounded-2xl w-full h-auto object-cover my-10 shadow-xl;
   }
 
-  /* MAIL ANIMATION */
+  /* MAIL */
   .letter-image {
     position: relative;
     width: 200px;
@@ -380,5 +385,53 @@
     height: 180px;
     bottom: 20px;
     z-index: 2;
+  }
+}
+
+/* ==========================================================================
+   7. UTILITIES & VISUAL FX
+   ========================================================================== */
+@layer components {
+  /* Gradient Background Animation */
+  .animate-gradient-x {
+    background-size: 100% 100%;
+    animation: none;
+  }
+  @media (min-width: 768px) {
+    .animate-gradient-x {
+      background-size: 200% 200%;
+      animation: var(--animate-gradient-x);
+    }
+  }
+
+  .animate-ticker {
+    animation: var(--animate-ticker);
+  }
+
+  .glitch-title {
+    position: relative;
+    animation: none;
+  }
+  @media (min-width: 768px) {
+    .glitch-title {
+      animation: var(--animate-glitch);
+    }
+  }
+
+  /* Glowing Headers */
+  .glow-heading {
+    @apply text-transparent bg-clip-text;
+    @apply bg-gradient-to-r from-brand-start via-brand-mid to-brand-end;
+    @apply tracking-tight font-black uppercase;
+    background-size: 100% 100%;
+    filter: drop-shadow(0 0 2px rgba(20, 184, 166, 0.2));
+  }
+  @media (min-width: 768px) {
+    .glow-heading {
+      background-size: 200% 200%;
+      animation: var(--animate-gradient-xy);
+      filter: drop-shadow(0 0 8px rgba(20, 184, 166, 0.35))
+        drop-shadow(0 0 20px rgba(129, 140, 248, 0.2));
+    }
   }
 }
