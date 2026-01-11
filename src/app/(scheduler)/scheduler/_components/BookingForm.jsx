@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { ChevronLeft, Loader2, ArrowRight, Zap } from "lucide-react";
 import { createClient } from "@/src/lib/supabase/client";
-import styles from "./Scheduler.module.css";
+import styles from "../Scheduler.module.css";
 
 export default function BookingForm({
   selectedDate,
